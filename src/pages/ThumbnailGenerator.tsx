@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Image,
   Upload,
@@ -20,6 +22,7 @@ import {
   Zap,
   Wand2,
   Settings,
+  AlertCircle,
 } from 'lucide-react';
 
 const emotions = [
@@ -37,8 +40,10 @@ const platforms = [
 
 const ThumbnailGenerator: React.FC = () => {
   const { toast } = useToast();
+  const { session } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedThumbnail, setGeneratedThumbnail] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     niche: '',
@@ -58,24 +63,106 @@ const ThumbnailGenerator: React.FC = () => {
     }
 
     setIsGenerating(true);
-    // Simulate AI generation
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Set a placeholder generated thumbnail
-    setGeneratedThumbnail('https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=1280&h=720&fit=crop');
-    setIsGenerating(false);
-    
-    toast({
-      title: 'Thumbnail Generated!',
-      description: 'Your high-CTR thumbnail is ready for download.',
-    });
+    setErrorMessage(null);
+    setGeneratedThumbnail(null);
+
+    try {
+      const emotionLabel = emotions.find(e => e.id === formData.emotion)?.label || 'Excited';
+      const stylePrompt = `${emotionLabel} mood, ${formData.style || 'modern and eye-catching'}`;
+
+      const { data, error } = await supabase.functions.invoke('generate-thumbnail', {
+        body: {
+          title: formData.title,
+          style: stylePrompt,
+          niche: formData.niche || 'General content',
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      if (data.success && data.imageUrl) {
+        setGeneratedThumbnail(data.imageUrl);
+        
+        // Save to database
+        if (session?.user) {
+          await supabase.from('thumbnails').insert({
+            user_id: session.user.id,
+            title: formData.title,
+            style: stylePrompt,
+            prompt: data.prompt,
+            image_url: data.imageUrl,
+          });
+        }
+
+        toast({
+          title: 'Thumbnail Generated!',
+          description: 'Your AI-powered thumbnail is ready.',
+        });
+      } else {
+        setErrorMessage(data.message || 'Could not generate image. Try a different prompt.');
+        toast({
+          title: 'Generation Issue',
+          description: data.message || 'Could not generate thumbnail.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error generating thumbnail:', error);
+      const message = error instanceof Error ? error.message : 'Failed to generate thumbnail';
+      setErrorMessage(message);
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  const handleDownload = () => {
-    toast({
-      title: 'Download Started',
-      description: 'Your thumbnail is being downloaded.',
-    });
+  const handleDownload = async () => {
+    if (!generatedThumbnail) return;
+
+    try {
+      // For base64 images
+      if (generatedThumbnail.startsWith('data:')) {
+        const link = document.createElement('a');
+        link.href = generatedThumbnail;
+        link.download = `thumbnail-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // For URL images
+        const response = await fetch(generatedThumbnail);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `thumbnail-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+
+      toast({
+        title: 'Download Started',
+        description: 'Your thumbnail is being downloaded.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Download Failed',
+        description: 'Could not download the thumbnail.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -92,7 +179,7 @@ const ThumbnailGenerator: React.FC = () => {
           <h1 className="text-2xl font-display font-bold">AI Thumbnail Generator</h1>
         </div>
         <p className="text-muted-foreground">
-          Create eye-catching, high-CTR thumbnails with perfect face placement and bold text using advanced AI.
+          Create eye-catching, high-CTR thumbnails with AI-powered image generation.
         </p>
       </motion.div>
 
@@ -183,25 +270,11 @@ const ThumbnailGenerator: React.FC = () => {
                 <Label htmlFor="style">Style Instructions (Optional)</Label>
                 <Textarea
                   id="style"
-                  placeholder="e.g., Bold red text, my face on the left, money graphics..."
+                  placeholder="e.g., Bold red text, dramatic lighting, money graphics..."
                   value={formData.style}
                   onChange={(e) => setFormData({ ...formData, style: e.target.value })}
                   rows={3}
                 />
-              </div>
-
-              {/* Upload Reference */}
-              <div className="space-y-2">
-                <Label>Upload Reference (Optional)</Label>
-                <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                  <Upload className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    Drop your image here or click to upload
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    PNG, JPG up to 10MB
-                  </p>
-                </div>
               </div>
 
               {/* Generate Button */}
@@ -215,7 +288,7 @@ const ThumbnailGenerator: React.FC = () => {
                 {isGenerating ? (
                   <>
                     <RefreshCw className="w-5 h-5 animate-spin" />
-                    Generating...
+                    Generating with AI...
                   </>
                 ) : (
                   <>
@@ -251,6 +324,13 @@ const ThumbnailGenerator: React.FC = () => {
                   <div className="text-center">
                     <div className="w-16 h-16 rounded-full border-4 border-primary/30 border-t-primary animate-spin mx-auto mb-4" />
                     <p className="text-muted-foreground">AI is creating your thumbnail...</p>
+                    <p className="text-xs text-muted-foreground mt-2">This may take 10-30 seconds</p>
+                  </div>
+                ) : errorMessage ? (
+                  <div className="text-center p-4">
+                    <AlertCircle className="w-12 h-12 mx-auto mb-4 text-destructive" />
+                    <p className="text-destructive font-medium">Generation Failed</p>
+                    <p className="text-sm text-muted-foreground mt-2">{errorMessage}</p>
                   </div>
                 ) : generatedThumbnail ? (
                   <img
@@ -275,7 +355,7 @@ const ThumbnailGenerator: React.FC = () => {
                   </Button>
                   <Button variant="outline" onClick={handleDownload}>
                     <Download className="w-4 h-4 mr-2" />
-                    Download 4K
+                    Download HD
                   </Button>
                 </div>
               )}

@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Image,
   Lightbulb,
@@ -11,11 +11,10 @@ import {
   Palette,
   Bot,
   TrendingUp,
-  Eye,
-  ThumbsUp,
   Zap,
   ArrowRight,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 
 const quickActions = [
@@ -49,22 +48,109 @@ const quickActions = [
   },
 ];
 
-const stats = [
-  { label: 'Thumbnails Created', value: '24', icon: Image, change: '+12%' },
-  { label: 'Ideas Generated', value: '156', icon: Lightbulb, change: '+8%' },
-  { label: 'Content Analyzed', value: '18', icon: BarChart3, change: '+25%' },
-  { label: 'Avg CTR Improvement', value: '+45%', icon: TrendingUp, change: '' },
-];
+interface Stats {
+  thumbnails: number;
+  ideas: number;
+  chats: number;
+}
 
-const recentActivity = [
-  { type: 'thumbnail', title: 'Gaming Thumbnail', time: '2 hours ago' },
-  { type: 'idea', title: '5 Video Ideas for Tech Niche', time: '5 hours ago' },
-  { type: 'analysis', title: 'SEO Analysis - Cooking Video', time: 'Yesterday' },
-  { type: 'branding', title: 'Channel Name Suggestions', time: '2 days ago' },
-];
+interface RecentActivity {
+  type: 'thumbnail' | 'idea' | 'chat';
+  title: string;
+  time: string;
+}
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
+  const [stats, setStats] = useState<Stats>({ thumbnails: 0, ideas: 0, chats: 0 });
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (session?.user) {
+      loadDashboardData();
+    }
+  }, [session]);
+
+  const loadDashboardData = async () => {
+    try {
+      // Get counts
+      const [thumbResult, ideasResult, chatsResult] = await Promise.all([
+        supabase.from('thumbnails').select('id', { count: 'exact', head: true }),
+        supabase.from('video_ideas').select('id', { count: 'exact', head: true }),
+        supabase.from('chat_messages').select('id', { count: 'exact', head: true }).eq('role', 'user'),
+      ]);
+
+      setStats({
+        thumbnails: thumbResult.count || 0,
+        ideas: ideasResult.count || 0,
+        chats: chatsResult.count || 0,
+      });
+
+      // Get recent activity
+      const activities: RecentActivity[] = [];
+
+      const { data: recentThumbs } = await supabase
+        .from('thumbnails')
+        .select('title, created_at')
+        .order('created_at', { ascending: false })
+        .limit(2);
+
+      recentThumbs?.forEach(t => {
+        activities.push({
+          type: 'thumbnail',
+          title: t.title,
+          time: formatTimeAgo(new Date(t.created_at)),
+        });
+      });
+
+      const { data: recentIdeas } = await supabase
+        .from('video_ideas')
+        .select('niche, platform, created_at')
+        .order('created_at', { ascending: false })
+        .limit(2);
+
+      recentIdeas?.forEach(i => {
+        activities.push({
+          type: 'idea',
+          title: `${i.niche} ideas for ${i.platform}`,
+          time: formatTimeAgo(new Date(i.created_at)),
+        });
+      });
+
+      // Sort by most recent
+      activities.sort((a, b) => {
+        // Simple sort - recent items first
+        return 0;
+      });
+
+      setRecentActivity(activities.slice(0, 4));
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatTimeAgo = (date: Date): string => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffDays === 1) return 'Yesterday';
+    return `${diffDays} days ago`;
+  };
+
+  const statsDisplay = [
+    { label: 'Thumbnails Created', value: stats.thumbnails.toString(), icon: Image, change: '' },
+    { label: 'Ideas Generated', value: stats.ideas.toString(), icon: Lightbulb, change: '' },
+    { label: 'Chat Messages', value: stats.chats.toString(), icon: Bot, change: '' },
+    { label: 'AI Powered', value: '100%', icon: TrendingUp, change: '' },
+  ];
 
   return (
     <div className="space-y-8">
@@ -119,33 +205,34 @@ const Dashboard: React.FC = () => {
       {/* Stats */}
       <div>
         <h2 className="text-xl font-display font-semibold mb-4">Your Stats</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Card variant="glass">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <stat.icon className="w-5 h-5 text-primary" />
+        {isLoading ? (
+          <div className="flex items-center justify-center h-32">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {statsDisplay.map((stat, index) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <Card variant="glass">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <stat.icon className="w-5 h-5 text-primary" />
+                      </div>
                     </div>
-                    {stat.change && (
-                      <span className="text-xs font-medium text-green-500 bg-green-500/10 px-2 py-1 rounded-full">
-                        {stat.change}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-2xl font-display font-bold mb-1">{stat.value}</div>
-                  <div className="text-sm text-muted-foreground">{stat.label}</div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+                    <div className="text-2xl font-display font-bold mb-1">{stat.value}</div>
+                    <div className="text-sm text-muted-foreground">{stat.label}</div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Two Column Layout */}
@@ -161,26 +248,31 @@ const Dashboard: React.FC = () => {
               <CardTitle>Recent Activity</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentActivity.map((activity, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      {activity.type === 'thumbnail' && <Image className="w-5 h-5 text-primary" />}
-                      {activity.type === 'idea' && <Lightbulb className="w-5 h-5 text-primary" />}
-                      {activity.type === 'analysis' && <BarChart3 className="w-5 h-5 text-primary" />}
-                      {activity.type === 'branding' && <Palette className="w-5 h-5 text-primary" />}
+              {recentActivity.length === 0 ? (
+                <p className="text-muted-foreground text-sm py-4">
+                  No recent activity. Start creating to see your history here!
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {recentActivity.map((activity, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        {activity.type === 'thumbnail' && <Image className="w-5 h-5 text-primary" />}
+                        {activity.type === 'idea' && <Lightbulb className="w-5 h-5 text-primary" />}
+                        {activity.type === 'chat' && <Bot className="w-5 h-5 text-primary" />}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium">{activity.title}</div>
+                        <div className="text-sm text-muted-foreground">{activity.time}</div>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-muted-foreground" />
                     </div>
-                    <div className="flex-1">
-                      <div className="font-medium">{activity.title}</div>
-                      <div className="text-sm text-muted-foreground">{activity.time}</div>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -212,7 +304,7 @@ const Dashboard: React.FC = () => {
                     Keep your video titles under 60 characters for maximum visibility in search and suggested videos.
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-pink/5 border border-pink/10">
+                <div className="p-4 rounded-lg bg-pink-500/5 border border-pink-500/10">
                   <h4 className="font-semibold mb-2">Hook in 5 Seconds</h4>
                   <p className="text-sm text-muted-foreground">
                     Use our AI to generate powerful hooks that capture attention in the first 5 seconds of your video.

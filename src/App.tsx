@@ -14,6 +14,8 @@ import VideoIdeas from "./pages/VideoIdeas";
 import Analytics from "./pages/Analytics";
 import Branding from "./pages/Branding";
 import AIChat from "./pages/AIChat";
+import History from "./pages/History";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,8 +38,8 @@ const App = () => (
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="branding" element={<Branding />} />
                 <Route path="chat" element={<AIChat />} />
-                <Route path="history" element={<Dashboard />} />
-                <Route path="settings" element={<Dashboard />} />
+                <Route path="history" element={<History />} />
+                <Route path="settings" element={<Settings />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
