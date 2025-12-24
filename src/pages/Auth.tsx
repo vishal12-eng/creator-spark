@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ import {
 export const AuthPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login, signup, loginWithGoogle, isLoading } = useAuth();
+  const { login, signup, loginWithGoogle, isLoading, user } = useAuth();
   const { toast } = useToast();
   
   const isSignup = searchParams.get('mode') === 'signup';
@@ -31,48 +31,71 @@ export const AuthPage: React.FC = () => {
     password: '',
   });
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    try {
-      if (isSignup) {
-        await signup(formData.email, formData.password, formData.name);
+    if (isSignup) {
+      if (formData.password.length < 6) {
+        toast({
+          title: 'Password too short',
+          description: 'Password must be at least 6 characters.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      const { error } = await signup(formData.email, formData.password, formData.name);
+      
+      if (error) {
+        toast({
+          title: 'Signup failed',
+          description: error,
+          variant: 'destructive',
+        });
+      } else {
         toast({
           title: 'Account created!',
           description: 'Welcome to CreatorAI. Start creating amazing content!',
         });
+        navigate('/dashboard');
+      }
+    } else {
+      const { error } = await login(formData.email, formData.password);
+      
+      if (error) {
+        toast({
+          title: 'Login failed',
+          description: error,
+          variant: 'destructive',
+        });
       } else {
-        await login(formData.email, formData.password);
         toast({
           title: 'Welcome back!',
           description: 'Ready to create something amazing?',
         });
+        navigate('/dashboard');
       }
-      navigate('/dashboard');
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Something went wrong. Please try again.',
-        variant: 'destructive',
-      });
     }
   };
 
   const handleGoogleLogin = async () => {
-    try {
-      await loginWithGoogle();
-      toast({
-        title: 'Welcome!',
-        description: 'Successfully signed in with Google.',
-      });
-      navigate('/dashboard');
-    } catch (error) {
+    const { error } = await loginWithGoogle();
+    
+    if (error) {
       toast({
         title: 'Error',
-        description: 'Could not sign in with Google.',
+        description: error,
         variant: 'destructive',
       });
     }
+    // OAuth redirects automatically, no need to navigate
   };
 
   return (
@@ -184,6 +207,7 @@ export const AuthPage: React.FC = () => {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
+                  minLength={6}
                 />
                 <button
                   type="button"
