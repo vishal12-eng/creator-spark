@@ -10,6 +10,10 @@ import AuthPage from "./pages/Auth";
 import DashboardLayout from "./layouts/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import ThumbnailGenerator from "./pages/ThumbnailGenerator";
+import VideoIdeas from "./pages/VideoIdeas";
+import Analytics from "./pages/Analytics";
+import Branding from "./pages/Branding";
+import AIChat from "./pages/AIChat";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,10 +32,10 @@ const App = () => (
               <Route path="/dashboard" element={<DashboardLayout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="thumbnail" element={<ThumbnailGenerator />} />
-                <Route path="ideas" element={<Dashboard />} />
-                <Route path="analytics" element={<Dashboard />} />
-                <Route path="branding" element={<Dashboard />} />
-                <Route path="chat" element={<Dashboard />} />
+                <Route path="ideas" element={<VideoIdeas />} />
+                <Route path="analytics" element={<Analytics />} />
+                <Route path="branding" element={<Branding />} />
+                <Route path="chat" element={<AIChat />} />
                 <Route path="history" element={<Dashboard />} />
                 <Route path="settings" element={<Dashboard />} />
               </Route>
