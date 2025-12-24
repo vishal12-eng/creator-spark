@@ -3,8 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Send, Bot, User, Loader2, Sparkles, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface Message {
   id: string;
@@ -14,19 +17,21 @@ interface Message {
 }
 
 const quickQuestions = [
-  'How do I generate a thumbnail?',
+  'How do I create viral thumbnails?',
   'What makes a good video title?',
   'How can I improve my CTR?',
-  'Tips for growing my channel',
-  'How to use the analytics feature?',
+  'Tips for growing my YouTube channel',
+  'Best posting times for Instagram Reels?',
 ];
 
 const AIChat = () => {
+  const { session } = useAuth();
+  const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content: "Hi! I'm your AI Creator Assistant. I'm here to help you grow your YouTube and Instagram channels. I know everything about this platform and can guide you through:\n\n• Creating high-CTR thumbnails\n• Generating viral video ideas\n• Analyzing your content for improvements\n• Building your channel brand\n\nHow can I help you today?",
+      content: "Hi! I'm your AI Creator Assistant powered by advanced AI. I'm here to help you grow your YouTube and Instagram channels. Ask me about:\n\n• Creating high-CTR thumbnails\n• Generating viral video ideas\n• SEO and discoverability\n• Content strategy\n• Monetization tips\n\nHow can I help you today?",
       timestamp: new Date(),
     },
   ]);
@@ -36,45 +41,10 @@ const AIChat = () => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Scroll to bottom when messages change
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
-
-  const generateResponse = (userMessage: string): string => {
-    const lowerMessage = userMessage.toLowerCase();
-    
-    if (lowerMessage.includes('thumbnail')) {
-      return "Great question about thumbnails! Here's how to use our Thumbnail Generator:\n\n1. Go to **Thumbnail Generator** in the sidebar\n2. Enter your video title and select your niche\n3. Choose an emotion type (curiosity, excitement, etc.)\n4. Optionally upload a reference image\n5. Click 'Generate Thumbnail'\n\n**Pro Tips:**\n• Use contrasting colors for better visibility\n• Include faces when possible (they increase CTR by 38%)\n• Keep text under 5 words\n• Test multiple versions\n\nWould you like me to explain any of these steps in more detail?";
-    }
-    
-    if (lowerMessage.includes('title') || lowerMessage.includes('headline')) {
-      return "Video titles are crucial for CTR! Here are my top tips:\n\n**Title Formulas That Work:**\n• \"How I [achieved result] in [timeframe]\"\n• \"[Number] [Topic] Secrets Nobody Tells You\"\n• \"Why [common belief] is Wrong\"\n• \"I Tried [thing] for [time] - Here's What Happened\"\n\n**Best Practices:**\n• Keep it under 60 characters\n• Front-load important keywords\n• Use power words (Ultimate, Secret, Proven)\n• Create curiosity gaps\n• Add numbers when relevant\n\nUse our **Video Ideas** generator to get AI-optimized titles for your niche!";
-    }
-    
-    if (lowerMessage.includes('ctr') || lowerMessage.includes('click')) {
-      return "Improving CTR (Click-Through Rate) is key to growth! Here's what works:\n\n**1. Thumbnail Optimization**\n• High contrast, readable text\n• Expressive faces\n• Bright, saturated colors\n\n**2. Title Optimization**\n• Create curiosity\n• Use emotional triggers\n• Promise clear value\n\n**3. Test & Iterate**\n• Use our Analytics tool to analyze your content\n• A/B test thumbnails when possible\n• Check your CTR in YouTube Studio\n\n**Industry Benchmarks:**\n• 2-4% CTR = Average\n• 4-6% CTR = Good\n• 6%+ CTR = Excellent\n\nWant me to analyze a specific video title for you?";
-    }
-    
-    if (lowerMessage.includes('grow') || lowerMessage.includes('growth') || lowerMessage.includes('subscribers')) {
-      return "Channel growth is a marathon, not a sprint! Here's my strategic advice:\n\n**Quick Wins:**\n• Optimize existing videos with better titles/thumbnails\n• Post consistently (2-3x per week minimum)\n• Engage with every comment in first hour\n\n**Medium-term Strategy:**\n• Find your unique angle in your niche\n• Create content series that encourage binge-watching\n• Collaborate with similar-sized creators\n\n**Long-term Success:**\n• Build an email list\n• Diversify platforms (YouTube + Instagram)\n• Create evergreen content that ranks\n\n**Use Our Tools:**\n• 🎨 Thumbnail Generator for better CTR\n• 💡 Video Ideas for trending topics\n• 📊 Analytics to find what's working\n• 🎯 Branding for professional presence\n\nWhat specific aspect of growth would you like to focus on?";
-    }
-    
-    if (lowerMessage.includes('analytics') || lowerMessage.includes('analyze')) {
-      return "Our Analytics feature helps you understand and improve your content! Here's how:\n\n**How to Use Analytics:**\n1. Go to **Analytics** in the sidebar\n2. Paste your video title, description, and tags\n3. Optionally upload your thumbnail\n4. Click 'Analyze Content'\n\n**What You'll Get:**\n• SEO Score - How well optimized for search\n• CTR Potential - Predicted click performance\n• Keyword Strength - Tag effectiveness\n• Hook Effectiveness - First 5 seconds quality\n• Detailed improvement suggestions\n• Optimized versions of your content\n\nThe AI will identify issues and give you specific fixes. Would you like to try it now?";
-    }
-    
-    if (lowerMessage.includes('brand') || lowerMessage.includes('logo') || lowerMessage.includes('name')) {
-      return "Building a strong brand is essential! Our Branding tool can help:\n\n**What You'll Get:**\n• 5 unique channel name suggestions\n• Logo concept ideas\n• Banner text recommendations\n• Complete 'About' section copy\n• Niche positioning strategy\n• Color palette suggestions\n• Content pillar ideas\n\n**Branding Tips:**\n• Keep your name memorable and easy to spell\n• Use consistent colors across all content\n• Create a recognizable intro/outro\n• Develop a signature style or catchphrase\n\nGo to **Branding** in the sidebar to generate your complete brand kit!";
-    }
-    
-    if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
-      return "Hey there! 👋 Great to chat with you!\n\nI'm here to help you become a better content creator. What would you like to work on today?\n\n• 🎨 Create eye-catching thumbnails\n• 💡 Generate viral video ideas\n• 📊 Analyze your content performance\n• 🎯 Build your channel brand\n• 🚀 Learn growth strategies\n\nJust ask me anything!";
-    }
-    
-    return "That's a great question! While I'm still learning about specific topics, here's what I can help you with right now:\n\n**Platform Features:**\n• **Thumbnail Generator** - Create click-worthy thumbnails\n• **Video Ideas** - Get viral content ideas with SEO titles\n• **Analytics** - Analyze and improve your content\n• **Branding** - Build your complete channel identity\n\n**Growth Topics:**\n• CTR optimization\n• SEO strategies\n• Content planning\n• Audience building\n\nTry asking me about any of these topics, or explore the tools in the sidebar!";
-  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -86,22 +56,128 @@ const AIChat = () => {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const allMessages = [...messages, userMessage];
+    setMessages(allMessages);
     setInput('');
     setIsLoading(true);
 
-    // Simulate AI response delay
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+    // Save user message to database
+    if (session?.user) {
+      supabase.from('chat_messages').insert({
+        user_id: session.user.id,
+        role: 'user',
+        content: userMessage.content,
+      }).then(() => {});
+    }
 
-    const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: generateResponse(userMessage.content),
-      timestamp: new Date(),
-    };
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            messages: allMessages.slice(1).map(m => ({ role: m.role, content: m.content })),
+          }),
+        }
+      );
 
-    setMessages(prev => [...prev, assistantMessage]);
-    setIsLoading(false);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to get response');
+      }
+
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      // Handle streaming response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantContent = '';
+      const assistantId = (Date.now() + 1).toString();
+
+      // Add empty assistant message
+      setMessages(prev => [...prev, {
+        id: assistantId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date(),
+      }]);
+
+      let textBuffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        textBuffer += decoder.decode(value, { stream: true });
+
+        // Process line-by-line
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              assistantContent += content;
+              setMessages(prev => 
+                prev.map(m => 
+                  m.id === assistantId 
+                    ? { ...m, content: assistantContent }
+                    : m
+                )
+              );
+            }
+          } catch {
+            // Incomplete JSON, put back
+            textBuffer = line + '\n' + textBuffer;
+            break;
+          }
+        }
+      }
+
+      // Save assistant message to database
+      if (session?.user && assistantContent) {
+        supabase.from('chat_messages').insert({
+          user_id: session.user.id,
+          role: 'assistant',
+          content: assistantContent,
+        }).then(() => {});
+      }
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get response';
+      
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: `Sorry, I encountered an error: ${errorMessage}. Please try again.`,
+        timestamp: new Date(),
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleQuickQuestion = (question: string) => {
@@ -122,7 +198,7 @@ const AIChat = () => {
           AI Chat Assistant
         </h1>
         <p className="text-muted-foreground">
-          Get help with the platform, content creation tips, and growth strategies
+          Get personalized help with content creation, growth strategies, and platform tips
         </p>
       </motion.div>
 
@@ -163,7 +239,7 @@ const AIChat = () => {
               ))}
             </AnimatePresence>
 
-            {isLoading && (
+            {isLoading && messages[messages.length - 1]?.role === 'user' && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
