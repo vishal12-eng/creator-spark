@@ -14,7 +14,114 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      thumbnails: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          prompt: string | null
+          style: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          prompt?: string | null
+          style?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          prompt?: string | null
+          style?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      video_ideas: {
+        Row: {
+          created_at: string
+          id: string
+          ideas: Json
+          niche: string
+          platform: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ideas?: Json
+          niche: string
+          platform: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ideas?: Json
+          niche?: string
+          platform?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

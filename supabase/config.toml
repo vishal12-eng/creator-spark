@@ -1,1 +1,10 @@
 project_id = "bganktbhpgvyginrslbh"
+
+[functions.generate-video-ideas]
+verify_jwt = true
+
+[functions.generate-thumbnail]
+verify_jwt = true
+
+[functions.ai-chat]
+verify_jwt = true

@@ -34,14 +34,27 @@ const sidebarLinks = [
 ];
 
 const DashboardLayout: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
+
+  const handleLogout = async () => {
+    await logout();
+  };
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -116,7 +129,7 @@ const DashboardLayout: React.FC = () => {
               <span className="font-medium">Settings</span>
             </Link>
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="flex items-center gap-3 px-4 py-3 rounded-xl text-sidebar-foreground hover:bg-sidebar-accent transition-colors w-full"
             >
               <LogOut className="w-5 h-5" />
@@ -161,7 +174,11 @@ const DashboardLayout: React.FC = () => {
                   <div className="text-xs text-muted-foreground">{user.email}</div>
                 </div>
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-semibold">
-                  {user.name.charAt(0).toUpperCase()}
+                  {user.avatar ? (
+                    <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    user.name.charAt(0).toUpperCase()
+                  )}
                 </div>
               </div>
             </div>

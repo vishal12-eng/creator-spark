@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
-interface User {
+interface AuthUser {
   id: string;
   email: string;
   name: string;
@@ -8,12 +10,13 @@ interface User {
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
+  session: Session | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<{ error?: string }>;
+  signup: (email: string, password: string, name: string) => Promise<{ error?: string }>;
+  loginWithGoogle: () => Promise<{ error?: string }>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,84 +33,106 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const formatUser = (user: User): AuthUser => ({
+  id: user.id,
+  email: user.email || '',
+  name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+  avatar: user.user_metadata?.avatar_url,
+});
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    const storedUser = localStorage.getItem('creatorai_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ? formatUser(session.user) : null);
+        setIsLoading(false);
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ? formatUser(session.user) : null);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<{ error?: string }> => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const newUser: User = {
-        id: crypto.randomUUID(),
+      const { error } = await supabase.auth.signInWithPassword({
         email,
-        name: email.split('@')[0],
-      };
+        password,
+      });
       
-      setUser(newUser);
-      localStorage.setItem('creatorai_user', JSON.stringify(newUser));
+      if (error) {
+        return { error: error.message };
+      }
+      return {};
     } finally {
       setIsLoading(false);
     }
   };
 
-  const signup = async (email: string, password: string, name: string) => {
+  const signup = async (email: string, password: string, name: string): Promise<{ error?: string }> => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const redirectUrl = `${window.location.origin}/`;
       
-      const newUser: User = {
-        id: crypto.randomUUID(),
+      const { error } = await supabase.auth.signUp({
         email,
-        name,
-      };
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: name,
+          },
+        },
+      });
       
-      setUser(newUser);
-      localStorage.setItem('creatorai_user', JSON.stringify(newUser));
+      if (error) {
+        return { error: error.message };
+      }
+      return {};
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loginWithGoogle = async () => {
-    setIsLoading(true);
+  const loginWithGoogle = async (): Promise<{ error?: string }> => {
     try {
-      // Simulate Google OAuth
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
       
-      const newUser: User = {
-        id: crypto.randomUUID(),
-        email: 'demo@gmail.com',
-        name: 'Demo User',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo',
-      };
-      
-      setUser(newUser);
-      localStorage.setItem('creatorai_user', JSON.stringify(newUser));
-    } finally {
-      setIsLoading(false);
+      if (error) {
+        return { error: error.message };
+      }
+      return {};
+    } catch (err) {
+      return { error: 'Failed to sign in with Google' };
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('creatorai_user');
+    setSession(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, session, isLoading, login, signup, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
