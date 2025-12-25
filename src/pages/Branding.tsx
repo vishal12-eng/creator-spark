@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface BrandingResult {
   channelNames: string[];
@@ -19,6 +21,7 @@ interface BrandingResult {
 
 const Branding = () => {
   const { toast } = useToast();
+  const { session } = useAuth();
   const [niche, setNiche] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
   const [personality, setPersonality] = useState('');
@@ -34,54 +37,47 @@ const Branding = () => {
 
     setIsGenerating(true);
     
-    // Simulate AI generation
-    await new Promise(resolve => setTimeout(resolve, 2500));
-    
-    const nicheClean = niche.charAt(0).toUpperCase() + niche.slice(1);
-    
-    const mockResult: BrandingResult = {
-      channelNames: [
-        `${nicheClean} Mastery`,
-        `The ${nicheClean} Lab`,
-        `${nicheClean} Unlocked`,
-        `Rise with ${nicheClean}`,
-        `${nicheClean} Insider`,
-      ],
-      logoIdeas: [
-        `Minimalist icon representing ${niche} with gradient accent`,
-        `Bold typography with a creative twist on the first letter`,
-        `Abstract geometric shape symbolizing growth and ${niche}`,
-        `Combination mark with initials and a ${niche}-related symbol`,
-      ],
-      bannerText: `Master ${nicheClean} • Weekly Tips & Tutorials • Join 10K+ Creators`,
-      aboutSection: `Welcome to your ultimate resource for ${niche}! 🚀
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-branding', {
+        body: { niche, targetAudience, personality },
+      });
 
-I'm dedicated to helping you master ${niche} through actionable tips, in-depth tutorials, and real-world strategies that actually work.
+      if (error) throw new Error(error.message);
+      if (data.error) throw new Error(data.error);
 
-What you'll find here:
-✅ Weekly ${niche} tutorials and tips
-✅ Behind-the-scenes insights
-✅ Community challenges and growth strategies
-✅ Exclusive content for subscribers
+      if (data.success && data.result) {
+        const brandingResult = data.result as BrandingResult;
+        setResult(brandingResult);
 
-📧 Business inquiries: contact@example.com
-🔔 New videos every Tuesday & Friday
+        // Save to database
+        if (session?.user) {
+          await supabase.from('branding_kits').insert({
+            user_id: session.user.id,
+            niche,
+            target_audience: targetAudience,
+            personality,
+            channel_names: brandingResult.channelNames,
+            logo_ideas: brandingResult.logoIdeas,
+            banner_text: brandingResult.bannerText,
+            about_section: brandingResult.aboutSection,
+            niche_positioning: brandingResult.nichePositioning,
+            color_palette: brandingResult.colorPalette,
+            content_pillars: brandingResult.contentPillars,
+          });
+        }
 
-#${niche.replace(/\s+/g, '')} #Growth #Creator`,
-      nichePositioning: `Position yourself as the "Practical ${nicheClean} Expert" who breaks down complex topics into actionable, beginner-friendly content. Focus on transformation stories and measurable results to build trust and authority.`,
-      colorPalette: ['#6366F1', '#8B5CF6', '#EC4899', '#10B981', '#F59E0B'],
-      contentPillars: [
-        `${nicheClean} Tutorials & How-Tos`,
-        `Industry News & Trends`,
-        `Tool Reviews & Comparisons`,
-        `Success Stories & Case Studies`,
-        `Q&A and Community Spotlights`,
-      ],
-    };
-
-    setResult(mockResult);
-    setIsGenerating(false);
-    toast({ title: 'Branding generated!', description: 'Your complete brand kit is ready' });
+        toast({ title: 'Branding generated!', description: 'Your complete brand kit is ready' });
+      }
+    } catch (error) {
+      console.error('Error generating branding:', error);
+      toast({
+        title: 'Generation failed',
+        description: error instanceof Error ? error.message : 'Please try again',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const copyToClipboard = (text: string, id: string) => {

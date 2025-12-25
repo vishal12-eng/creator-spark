@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AnalysisResult {
   seoScore: number;
@@ -23,6 +25,7 @@ interface AnalysisResult {
 
 const Analytics = () => {
   const { toast } = useToast();
+  const { session } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState('');
@@ -45,36 +48,50 @@ const Analytics = () => {
 
     setIsAnalyzing(true);
     
-    // Simulate AI analysis
-    await new Promise(resolve => setTimeout(resolve, 2500));
-    
-    const mockResult: AnalysisResult = {
-      seoScore: 72,
-      ctrPotential: 65,
-      keywordStrength: 58,
-      hookEffectiveness: 80,
-      thumbnailReadability: thumbnailFile ? 75 : 0,
-      overallScore: 68,
-      issues: [
-        { type: 'warning', message: 'Title could be more specific for better SEO' },
-        { type: 'error', message: 'Missing power words in title' },
-        { type: 'warning', message: 'Description lacks call-to-action' },
-        { type: 'warning', message: 'Consider adding more relevant tags' },
-      ],
-      improvements: [
-        'Add numbers or statistics to your title (e.g., "5 Ways..." or "In 2024")',
-        'Include a clear hook in the first 5 seconds',
-        'Use power words like "Ultimate", "Secret", "Proven"',
-        'Add timestamps to your description',
-        'Include relevant keywords naturally in description',
-      ],
-      optimizedTitle: `🔥 ${title} - The Ultimate Guide (2024)`,
-      optimizedDescription: `${description}\n\n⏰ Timestamps:\n0:00 - Introduction\n1:00 - Main Content\n5:00 - Key Takeaways\n\n🔔 Subscribe for more tips!\n\n#YouTubeGrowth #ContentCreation`,
-    };
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-content', {
+        body: { title, description, tags },
+      });
 
-    setResult(mockResult);
-    setIsAnalyzing(false);
-    toast({ title: 'Analysis complete!', description: 'Check your detailed report below' });
+      if (error) throw new Error(error.message);
+      if (data.error) throw new Error(data.error);
+
+      if (data.success && data.result) {
+        const analysisResult = data.result as AnalysisResult;
+        setResult(analysisResult);
+
+        // Save to database
+        if (session?.user) {
+          await supabase.from('analytics_reports').insert({
+            user_id: session.user.id,
+            title,
+            description,
+            tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+            seo_score: analysisResult.seoScore,
+            ctr_potential: analysisResult.ctrPotential,
+            keyword_strength: analysisResult.keywordStrength,
+            hook_effectiveness: analysisResult.hookEffectiveness,
+            thumbnail_readability: analysisResult.thumbnailReadability,
+            overall_score: analysisResult.overallScore,
+            issues: analysisResult.issues,
+            improvements: analysisResult.improvements,
+            optimized_title: analysisResult.optimizedTitle,
+            optimized_description: analysisResult.optimizedDescription,
+          });
+        }
+
+        toast({ title: 'Analysis complete!', description: 'Check your detailed report below' });
+      }
+    } catch (error) {
+      console.error('Error analyzing content:', error);
+      toast({
+        title: 'Analysis failed',
+        description: error instanceof Error ? error.message : 'Please try again',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const getScoreColor = (score: number) => {

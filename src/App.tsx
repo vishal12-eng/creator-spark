@@ -16,6 +16,9 @@ import Branding from "./pages/Branding";
 import AIChat from "./pages/AIChat";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
+import NicheAnalyzer from "./pages/NicheAnalyzer";
+import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,12 +34,15 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/dashboard" element={<DashboardLayout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="thumbnail" element={<ThumbnailGenerator />} />
                 <Route path="ideas" element={<VideoIdeas />} />
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="branding" element={<Branding />} />
+                <Route path="niche" element={<NicheAnalyzer />} />
                 <Route path="chat" element={<AIChat />} />
                 <Route path="history" element={<History />} />
                 <Route path="settings" element={<Settings />} />
