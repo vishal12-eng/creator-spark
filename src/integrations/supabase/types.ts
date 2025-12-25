@@ -14,6 +14,162 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_reports: {
+        Row: {
+          created_at: string
+          ctr_potential: number
+          description: string | null
+          hook_effectiveness: number
+          id: string
+          improvements: string[]
+          issues: Json
+          keyword_strength: number
+          optimized_description: string | null
+          optimized_title: string | null
+          overall_score: number
+          seo_score: number
+          tags: string[] | null
+          thumbnail_readability: number
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ctr_potential?: number
+          description?: string | null
+          hook_effectiveness?: number
+          id?: string
+          improvements?: string[]
+          issues?: Json
+          keyword_strength?: number
+          optimized_description?: string | null
+          optimized_title?: string | null
+          overall_score?: number
+          seo_score?: number
+          tags?: string[] | null
+          thumbnail_readability?: number
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ctr_potential?: number
+          description?: string | null
+          hook_effectiveness?: number
+          id?: string
+          improvements?: string[]
+          issues?: Json
+          keyword_strength?: number
+          optimized_description?: string | null
+          optimized_title?: string | null
+          overall_score?: number
+          seo_score?: number
+          tags?: string[] | null
+          thumbnail_readability?: number
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      blog_posts: {
+        Row: {
+          author_id: string
+          category: string
+          content: string
+          created_at: string
+          excerpt: string | null
+          featured_image: string | null
+          id: string
+          published: boolean
+          published_at: string | null
+          slug: string
+          tags: string[]
+          title: string
+          updated_at: string
+          views: number
+        }
+        Insert: {
+          author_id: string
+          category?: string
+          content: string
+          created_at?: string
+          excerpt?: string | null
+          featured_image?: string | null
+          id?: string
+          published?: boolean
+          published_at?: string | null
+          slug: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+          views?: number
+        }
+        Update: {
+          author_id?: string
+          category?: string
+          content?: string
+          created_at?: string
+          excerpt?: string | null
+          featured_image?: string | null
+          id?: string
+          published?: boolean
+          published_at?: string | null
+          slug?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          views?: number
+        }
+        Relationships: []
+      }
+      branding_kits: {
+        Row: {
+          about_section: string | null
+          banner_text: string | null
+          channel_names: string[]
+          color_palette: string[]
+          content_pillars: string[]
+          created_at: string
+          id: string
+          logo_ideas: string[]
+          niche: string
+          niche_positioning: string | null
+          personality: string | null
+          target_audience: string | null
+          user_id: string
+        }
+        Insert: {
+          about_section?: string | null
+          banner_text?: string | null
+          channel_names?: string[]
+          color_palette?: string[]
+          content_pillars?: string[]
+          created_at?: string
+          id?: string
+          logo_ideas?: string[]
+          niche: string
+          niche_positioning?: string | null
+          personality?: string | null
+          target_audience?: string | null
+          user_id: string
+        }
+        Update: {
+          about_section?: string | null
+          banner_text?: string | null
+          channel_names?: string[]
+          color_palette?: string[]
+          content_pillars?: string[]
+          created_at?: string
+          id?: string
+          logo_ideas?: string[]
+          niche?: string
+          niche_positioning?: string | null
+          personality?: string | null
+          target_audience?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -34,6 +190,63 @@ export type Database = {
           created_at?: string
           id?: string
           role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      niche_analyses: {
+        Row: {
+          competition_level: string
+          competition_score: number
+          content_gaps: string[]
+          created_at: string
+          growth_opportunity: string
+          growth_score: number
+          id: string
+          monetization_potential: string
+          monetization_score: number
+          niche: string
+          platform: string
+          recommendations: string[]
+          sub_niches: string[]
+          top_competitors: string[]
+          trending_topics: string[]
+          user_id: string
+        }
+        Insert: {
+          competition_level: string
+          competition_score?: number
+          content_gaps?: string[]
+          created_at?: string
+          growth_opportunity: string
+          growth_score?: number
+          id?: string
+          monetization_potential: string
+          monetization_score?: number
+          niche: string
+          platform?: string
+          recommendations?: string[]
+          sub_niches?: string[]
+          top_competitors?: string[]
+          trending_topics?: string[]
+          user_id: string
+        }
+        Update: {
+          competition_level?: string
+          competition_score?: number
+          content_gaps?: string[]
+          created_at?: string
+          growth_opportunity?: string
+          growth_score?: number
+          id?: string
+          monetization_potential?: string
+          monetization_score?: number
+          niche?: string
+          platform?: string
+          recommendations?: string[]
+          sub_niches?: string[]
+          top_competitors?: string[]
+          trending_topics?: string[]
           user_id?: string
         }
         Relationships: []
@@ -95,6 +308,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       video_ideas: {
         Row: {
           created_at: string
@@ -127,10 +361,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -257,6 +497,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
