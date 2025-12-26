@@ -1,195 +1,118 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { 
-  Play, 
-  Pause, 
-  Volume2, 
-  VolumeX, 
-  Zap, 
-  ArrowRight,
-  Sparkles
-} from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 export const HeroSection: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(true);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const [videoError, setVideoError] = useState(false);
 
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) {
+      video.addEventListener('loadeddata', () => setVideoLoaded(true));
+      video.addEventListener('error', () => setVideoError(true));
+    }
+    return () => {
+      if (video) {
+        video.removeEventListener('loadeddata', () => setVideoLoaded(true));
+        video.removeEventListener('error', () => setVideoError(true));
       }
-      setIsPlaying(!isPlaying);
-    }
-  };
-
-  const toggleMute = () => {
-    if (videoRef.current) {
-      videoRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
-    }
-  };
+    };
+  }, []);
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section className="relative h-screen w-full overflow-hidden bg-[#0A0F1A]">
       {/* Video Background */}
       <div className="absolute inset-0 z-0">
+        {/* Fallback gradient background */}
+        <div 
+          className={`absolute inset-0 bg-gradient-to-b from-[#0A0F1A] via-[#0D1220] to-[#0A0F1A] transition-opacity duration-1000 ${
+            videoLoaded && !videoError ? 'opacity-0' : 'opacity-100'
+          }`}
+        >
+          {/* Simulated lava glow effect for fallback */}
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[150%] h-[40%] bg-gradient-radial from-orange-600/20 via-orange-900/10 to-transparent blur-3xl" />
+        </div>
+
+        {/* Video element */}
         <video
           ref={videoRef}
           autoPlay
           loop
           muted
           playsInline
-          className="w-full h-full object-cover opacity-30"
-          poster="https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=1920&q=80"
+          preload="auto"
+          className={`w-full h-full object-cover transition-opacity duration-1000 animate-slow-zoom ${
+            videoLoaded && !videoError ? 'opacity-100' : 'opacity-0'
+          }`}
+          poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'%3E%3Crect fill='%230A0F1A' width='1920' height='1080'/%3E%3C/svg%3E"
         >
           <source
-            src="https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-a-city-at-night-11739-large.mp4"
+            src="https://assets.mixkit.co/videos/preview/mixkit-fire-burning-on-a-dark-background-4094-large.mp4"
             type="video/mp4"
           />
         </video>
-        <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background" />
+
+        {/* Dark overlay for text readability */}
+        <div className="absolute inset-0 bg-[rgba(10,15,26,0.35)]" />
+        
+        {/* Bottom gradient fade */}
+        <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-[#0A0F1A] to-transparent" />
       </div>
 
-      {/* Grid Pattern Overlay */}
-      <div className="absolute inset-0 grid-pattern opacity-50 z-0" />
+      {/* Main Content - Static on top of video */}
+      <div className="relative z-10 h-full flex flex-col">
+        {/* Centered Hero Content */}
+        <div className="flex-1 flex items-center justify-center px-6">
+          <div className="text-center max-w-4xl mx-auto">
+            {/* Main Headline */}
+            <h1 className="font-display font-extralight text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl mb-8 leading-[1.1] tracking-[0.08em] uppercase">
+              <span className="block gradient-text text-glow-subtle">TURN THOUGHTS</span>
+              <span className="block gradient-text text-glow-subtle mt-2">INTO IMPACT</span>
+            </h1>
 
-      {/* Floating Orbs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-float" />
-      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/20 rounded-full blur-3xl animate-float animation-delay-200" />
+            {/* Subheadline */}
+            <p className="text-[hsla(210,20%,90%,0.8)] text-base sm:text-lg md:text-xl max-w-2xl mx-auto mb-4 font-light tracking-wide leading-relaxed">
+              Echoform AI helps creators turn ideas into videos, brands,
+              and content that lasts.
+            </p>
 
-      {/* Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32">
-        <div className="text-center">
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-primary/20 mb-8"
-          >
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">AI-Powered Creator Growth Platform</span>
-          </motion.div>
+            {/* Footer line */}
+            <p className="text-[hsla(210,20%,90%,0.5)] text-sm md:text-base font-light tracking-wider">
+              Built for creators who think deeper — powered by AI.
+            </p>
+          </div>
+        </div>
 
-          {/* Headline */}
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold tracking-tight mb-6"
-          >
-            Grow Your Channel
-            <br />
-            <span className="gradient-text">10x Faster</span> with AI
-          </motion.h1>
-
-          {/* Subheadline */}
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
-          >
-            Create high-CTR thumbnails, generate viral video ideas, analyze your content, 
-            and get AI-powered insights to skyrocket your YouTube & Instagram growth.
-          </motion.p>
-
-          {/* CTAs */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
-          >
+        {/* Bottom CTA Section */}
+        <div className="absolute bottom-8 sm:bottom-12 left-6 sm:left-12">
+          <div className="glass-card rounded-2xl p-5 sm:p-6 max-w-xs">
+            {/* Primary CTA Button */}
             <Link to="/auth?mode=signup">
-              <Button variant="hero" size="xl" className="group">
-                <Zap className="w-5 h-5" />
-                Start Creating Free
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
+              <button className="btn-cta w-full py-3.5 px-6 rounded-xl text-white font-medium text-sm tracking-wide transition-all duration-300">
+                Start Creating
+              </button>
             </Link>
-            <Link to="/features">
-              <Button variant="glass" size="xl">
-                See How It Works
-              </Button>
+
+            {/* Secondary Link */}
+            <Link 
+              to="#features" 
+              className="flex items-center justify-center gap-2 mt-4 text-[hsla(210,20%,90%,0.7)] hover:text-[hsla(210,20%,90%,0.95)] text-sm font-light tracking-wide transition-colors duration-300 group"
+            >
+              <span>See How It Works</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
             </Link>
-          </motion.div>
+          </div>
+        </div>
 
-          {/* Video Controls */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="flex items-center justify-center gap-2"
-          >
-            <button
-              onClick={togglePlay}
-              className="p-2 rounded-full glass hover:bg-card/80 transition-colors"
-              aria-label={isPlaying ? 'Pause video' : 'Play video'}
-            >
-              {isPlaying ? (
-                <Pause className="w-4 h-4" />
-              ) : (
-                <Play className="w-4 h-4" />
-              )}
-            </button>
-            <button
-              onClick={toggleMute}
-              className="p-2 rounded-full glass hover:bg-card/80 transition-colors"
-              aria-label={isMuted ? 'Unmute video' : 'Mute video'}
-            >
-              {isMuted ? (
-                <VolumeX className="w-4 h-4" />
-              ) : (
-                <Volume2 className="w-4 h-4" />
-              )}
-            </button>
-          </motion.div>
-
-          {/* Stats */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-            className="grid grid-cols-3 gap-8 max-w-2xl mx-auto mt-16"
-          >
-            {[
-              { value: '50K+', label: 'Creators' },
-              { value: '2M+', label: 'Thumbnails Made' },
-              { value: '300%', label: 'Avg CTR Increase' },
-            ].map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="text-2xl sm:text-3xl font-display font-bold gradient-text">
-                  {stat.value}
-                </div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
-              </div>
-            ))}
-          </motion.div>
+        {/* Scroll Indicator */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 hidden md:block">
+          <div className="w-6 h-10 rounded-full border border-[hsla(210,20%,90%,0.2)] flex items-start justify-center p-2">
+            <div className="w-1 h-2 rounded-full bg-[hsla(199,89%,70%,0.6)] animate-bounce" />
+          </div>
         </div>
       </div>
-
-      {/* Scroll Indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.6 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10"
-      >
-        <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex items-start justify-center p-2">
-          <motion.div
-            animate={{ y: [0, 12, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-            className="w-1.5 h-1.5 rounded-full bg-primary"
-          />
-        </div>
-      </motion.div>
     </section>
   );
 };

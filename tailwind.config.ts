@@ -15,7 +15,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
-        display: ["Space Grotesk", "Inter", "sans-serif"],
+        display: ["Outfit", "Inter", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -61,16 +61,20 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        cyan: {
-          DEFAULT: "hsl(var(--cyan))",
-          glow: "hsl(var(--cyan-glow))",
+        "ice-blue": {
+          DEFAULT: "hsl(var(--ice-blue))",
+          dim: "hsl(var(--ice-blue-dim))",
         },
-        purple: {
-          DEFAULT: "hsl(var(--purple))",
-          glow: "hsl(var(--purple-glow))",
+        "deep-navy": {
+          DEFAULT: "hsl(var(--deep-navy))",
         },
-        pink: {
-          DEFAULT: "hsl(var(--pink))",
+        lava: {
+          DEFAULT: "hsl(var(--lava-orange))",
+          glow: "hsl(var(--lava-glow))",
+        },
+        "electric-purple": {
+          DEFAULT: "hsl(var(--electric-purple))",
+          glow: "hsl(var(--electric-purple-glow))",
         },
       },
       borderRadius: {
