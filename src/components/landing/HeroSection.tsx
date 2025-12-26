@@ -43,13 +43,13 @@ export const HeroSection: React.FC = () => {
           muted
           playsInline
           preload="auto"
-          className={`w-full h-full object-cover transition-opacity duration-1000 animate-slow-zoom ${
+          className={`w-full h-full object-cover transition-opacity duration-1000 ${
             videoLoaded && !videoError ? 'opacity-100' : 'opacity-0'
           }`}
           poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'%3E%3Crect fill='%230A0F1A' width='1920' height='1080'/%3E%3C/svg%3E"
         >
           <source
-            src="https://assets.mixkit.co/videos/preview/mixkit-fire-burning-on-a-dark-background-4094-large.mp4"
+            src="https://res.cloudinary.com/dtmi8vdmk/video/upload/v1766748247/Cinematic_slowmotion_scene_1080p_2025122615_ve3tom.mp4"
             type="video/mp4"
           />
         </video>
