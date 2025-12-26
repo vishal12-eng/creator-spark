@@ -18,7 +18,9 @@ import {
   Moon,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  Target,
+  Shield
 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -27,6 +29,7 @@ const sidebarLinks = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Thumbnail Generator', href: '/dashboard/thumbnail', icon: Image },
   { name: 'Video Ideas', href: '/dashboard/ideas', icon: Lightbulb },
+  { name: 'Niche Analyzer', href: '/dashboard/niche', icon: Target },
   { name: 'Content Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { name: 'Channel Branding', href: '/dashboard/branding', icon: Palette },
   { name: 'AI Assistant', href: '/dashboard/chat', icon: Bot },
