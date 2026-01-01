@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -9,14 +9,23 @@ interface AuthUser {
   avatar?: string;
 }
 
+interface SubscriptionState {
+  subscribed: boolean;
+  plan: 'FREE' | 'CREATOR' | 'PRO';
+  subscriptionEnd: string | null;
+  isLoading: boolean;
+}
+
 interface AuthContextType {
   user: AuthUser | null;
   session: Session | null;
   isLoading: boolean;
+  subscription: SubscriptionState;
   login: (email: string, password: string) => Promise<{ error?: string }>;
   signup: (email: string, password: string, name: string) => Promise<{ error?: string }>;
   loginWithGoogle: () => Promise<{ error?: string }>;
   logout: () => Promise<void>;
+  checkSubscription: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,10 +53,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [subscription, setSubscription] = useState<SubscriptionState>({
+    subscribed: false,
+    plan: 'FREE',
+    subscriptionEnd: null,
+    isLoading: false,
+  });
+
+  const checkSubscription = useCallback(async () => {
+    if (!session) {
+      setSubscription({
+        subscribed: false,
+        plan: 'FREE',
+        subscriptionEnd: null,
+        isLoading: false,
+      });
+      return;
+    }
+
+    setSubscription(prev => ({ ...prev, isLoading: true }));
+
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription');
+
+      if (error) {
+        console.error('Subscription check error:', error);
+        return;
+      }
+
+      setSubscription({
+        subscribed: data?.subscribed ?? false,
+        plan: data?.plan ?? 'FREE',
+        subscriptionEnd: data?.subscription_end ?? null,
+        isLoading: false,
+      });
+    } catch (error) {
+      console.error('Subscription check failed:', error);
+      setSubscription(prev => ({ ...prev, isLoading: false }));
+    }
+  }, [session]);
 
   useEffect(() => {
     // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ? formatUser(session.user) : null);
@@ -62,8 +110,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => authSubscription.unsubscribe();
   }, []);
+
+  // Check subscription when session changes
+  useEffect(() => {
+    if (session) {
+      checkSubscription();
+    }
+  }, [session, checkSubscription]);
+
+  // Check subscription periodically (every minute)
+  useEffect(() => {
+    if (!session) return;
+
+    const interval = setInterval(() => {
+      checkSubscription();
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [session, checkSubscription]);
 
   const login = async (email: string, password: string): Promise<{ error?: string }> => {
     setIsLoading(true);
@@ -129,10 +195,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
+    setSubscription({
+      subscribed: false,
+      plan: 'FREE',
+      subscriptionEnd: null,
+      isLoading: false,
+    });
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, login, signup, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      isLoading, 
+      subscription,
+      login, 
+      signup, 
+      loginWithGoogle, 
+      logout,
+      checkSubscription,
+    }}>
       {children}
     </AuthContext.Provider>
   );
