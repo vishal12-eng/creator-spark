@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Settings as SettingsIcon, User, Mail, Save, Loader2, LogOut } from 'lucide-react';
+import { Settings as SettingsIcon, User, Mail, Save, Loader2, LogOut, CreditCard, Crown, Zap } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
 const Settings = () => {
-  const { user, session, logout } = useAuth();
+  const { user, session, logout, subscription, checkSubscription } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isManagingSubscription, setIsManagingSubscription] = useState(false);
   const [profile, setProfile] = useState({
     full_name: '',
     avatar_url: '',
@@ -85,9 +87,55 @@ const Settings = () => {
     }
   };
 
+  const handleManageSubscription = async () => {
+    setIsManagingSubscription(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+
+      if (error) throw error;
+
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      } else {
+        throw new Error('No portal URL returned');
+      }
+    } catch (error) {
+      console.error('Portal error:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to open subscription portal',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsManagingSubscription(false);
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
     navigate('/');
+  };
+
+  const getPlanIcon = () => {
+    switch (subscription.plan) {
+      case 'PRO':
+        return <Crown className="w-5 h-5 text-amber-400" />;
+      case 'CREATOR':
+        return <Zap className="w-5 h-5 text-electric-purple" />;
+      default:
+        return <Zap className="w-5 h-5 text-muted-foreground" />;
+    }
+  };
+
+  const getPlanColor = () => {
+    switch (subscription.plan) {
+      case 'PRO':
+        return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+      case 'CREATOR':
+        return 'bg-electric-purple/20 text-electric-purple border-electric-purple/30';
+      default:
+        return 'bg-muted text-muted-foreground';
+    }
   };
 
   if (isLoading) {
@@ -113,6 +161,84 @@ const Settings = () => {
         <p className="text-muted-foreground">
           Manage your account settings and preferences
         </p>
+      </motion.div>
+
+      {/* Subscription Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Subscription
+            </CardTitle>
+            <CardDescription>
+              Manage your subscription and billing
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
+              <div className="flex items-center gap-3">
+                {getPlanIcon()}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">Current Plan:</span>
+                    <Badge className={getPlanColor()}>
+                      {subscription.plan}
+                    </Badge>
+                  </div>
+                  {subscription.subscriptionEnd && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Renews on {new Date(subscription.subscriptionEnd).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {subscription.isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={checkSubscription}
+                >
+                  Refresh
+                </Button>
+              )}
+            </div>
+
+            {subscription.subscribed ? (
+              <Button 
+                variant="outline" 
+                onClick={handleManageSubscription}
+                disabled={isManagingSubscription}
+              >
+                {isManagingSubscription ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Opening...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Manage Subscription
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button 
+                onClick={() => navigate('/#pricing')}
+                className="bg-gradient-to-r from-electric-purple to-ice-blue text-white"
+              >
+                <Crown className="w-4 h-4 mr-2" />
+                Upgrade Plan
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Profile Settings */}

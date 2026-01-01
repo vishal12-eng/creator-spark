@@ -1,64 +1,128 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Check, Zap, Crown, Building } from 'lucide-react';
+import { Check, Zap, Crown, Building, Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+
+// Stripe price IDs for each plan
+const PRICE_IDS = {
+  creator: 'price_1RXRvzBZ3oHGezWnGQvfDK4L',
+  pro: 'price_1RXRxnBZ3oHGezWnJPLQHiB7',
+};
 
 const plans = [
   {
-    name: 'Starter',
+    name: 'Free',
+    key: 'free',
     icon: Zap,
-    price: 'Free',
-    period: '',
+    price: '$0',
+    period: '/month',
     description: 'Perfect for trying out CreatorAI',
     features: [
-      '5 thumbnails/month',
-      '10 video ideas/month',
-      'Basic analytics',
+      '20 tokens/month',
+      'Watermarked thumbnails',
+      'Basic video ideas',
       'Community support',
     ],
     cta: 'Get Started',
     popular: false,
   },
   {
-    name: 'Pro',
+    name: 'Creator',
+    key: 'creator',
     icon: Crown,
-    price: '$19',
+    price: '$9',
     period: '/month',
     description: 'For growing creators who want more',
     features: [
-      'Unlimited thumbnails',
-      'Unlimited video ideas',
-      'Advanced analytics',
+      '500 tokens/month',
+      'HD thumbnails (no watermark)',
+      'Advanced video ideas',
       'AI chat assistant',
       'Channel branding tools',
       'Priority support',
-      'API access',
     ],
-    cta: 'Start Pro Trial',
+    cta: 'Start Creator Plan',
     popular: true,
   },
   {
-    name: 'Agency',
+    name: 'Pro',
+    key: 'pro',
     icon: Building,
-    price: '$99',
+    price: '$29',
     period: '/month',
-    description: 'For teams and agencies',
+    description: 'For professional creators',
     features: [
-      'Everything in Pro',
-      '10 team members',
-      'White-label exports',
-      'Custom AI training',
+      '2000 tokens/month',
+      'Everything in Creator',
+      'Advanced analytics',
+      'API access',
       'Dedicated support',
-      'Advanced API access',
-      'Analytics dashboard',
+      'Custom AI training',
     ],
-    cta: 'Contact Sales',
+    cta: 'Start Pro Plan',
     popular: false,
   },
 ];
 
 export const PricingSection: React.FC = () => {
+  const { user, session } = useAuth();
+  const navigate = useNavigate();
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
+  const handlePlanClick = async (planKey: string) => {
+    // Free plan - just go to signup
+    if (planKey === 'free') {
+      navigate('/auth?mode=signup');
+      return;
+    }
+
+    // If not logged in, redirect to auth
+    if (!user || !session) {
+      navigate('/auth?mode=signup');
+      return;
+    }
+
+    // Get the price ID for the selected plan
+    const priceId = PRICE_IDS[planKey as keyof typeof PRICE_IDS];
+    if (!priceId) {
+      toast({
+        title: 'Error',
+        description: 'Invalid plan selected',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoadingPlan(planKey);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { priceId },
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast({
+        title: 'Checkout Error',
+        description: error instanceof Error ? error.message : 'Failed to start checkout',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
+
   return (
     <section id="pricing" className="py-32 relative overflow-hidden">
       {/* Cinematic Background */}
@@ -165,18 +229,22 @@ export const PricingSection: React.FC = () => {
                 </ul>
 
                 {/* CTA */}
-                <Link to="/auth?mode=signup" className="block">
-                  <Button
-                    className={`w-full h-12 font-medium tracking-wide transition-all duration-300 ${
-                      plan.popular
-                        ? 'bg-gradient-to-r from-electric-purple to-ice-blue text-white hover:opacity-90 border-0'
-                        : 'bg-transparent border border-white/20 text-white/80 hover:border-ice-blue/50 hover:text-white'
-                    }`}
-                    size="lg"
-                  >
-                    {plan.cta}
-                  </Button>
-                </Link>
+                <Button
+                  onClick={() => handlePlanClick(plan.key)}
+                  disabled={loadingPlan === plan.key}
+                  className={`w-full h-12 font-medium tracking-wide transition-all duration-300 ${
+                    plan.popular
+                      ? 'bg-gradient-to-r from-electric-purple to-ice-blue text-white hover:opacity-90 border-0'
+                      : 'bg-transparent border border-white/20 text-white/80 hover:border-ice-blue/50 hover:text-white'
+                  }`}
+                  size="lg"
+                >
+                  {loadingPlan === plan.key ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    plan.cta
+                  )}
+                </Button>
               </div>
             </motion.div>
           ))}
