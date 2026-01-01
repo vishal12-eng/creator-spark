@@ -122,6 +122,48 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_profiles: {
+        Row: {
+          brand_name: string
+          brand_voice: string | null
+          color_palette: Json | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          keywords: string[] | null
+          target_audience: string | null
+          tone_settings: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_name: string
+          brand_voice?: string | null
+          color_palette?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          keywords?: string[] | null
+          target_audience?: string | null
+          tone_settings?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand_name?: string
+          brand_voice?: string | null
+          color_palette?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          keywords?: string[] | null
+          target_audience?: string | null
+          tone_settings?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       branding_kits: {
         Row: {
           about_section: string | null
@@ -278,6 +320,45 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          plan: Database["public"]["Enums"]["subscription_plan"]
+          plan_expiry: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          tokens_monthly_limit: number
+          tokens_remaining: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          plan_expiry?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tokens_monthly_limit?: number
+          tokens_remaining?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          plan_expiry?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tokens_monthly_limit?: number
+          tokens_remaining?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       thumbnails: {
         Row: {
           created_at: string
@@ -304,6 +385,36 @@ export type Database = {
           prompt?: string | null
           style?: string | null
           title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      token_usage_logs: {
+        Row: {
+          action: string
+          created_at: string
+          feature: string | null
+          id: string
+          metadata: Json | null
+          tokens_used: number
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          feature?: string | null
+          id?: string
+          metadata?: Json | null
+          tokens_used: number
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          feature?: string | null
+          id?: string
+          metadata?: Json | null
+          tokens_used?: number
           user_id?: string
         }
         Relationships: []
@@ -361,6 +472,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_create_brand_profile: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
+      deduct_tokens: {
+        Args: {
+          p_action: string
+          p_amount: number
+          p_feature?: string
+          p_metadata?: Json
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      get_user_subscription: {
+        Args: { p_user_id: string }
+        Returns: {
+          plan: Database["public"]["Enums"]["subscription_plan"]
+          plan_expiry: string
+          tokens_monthly_limit: number
+          tokens_remaining: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -368,9 +502,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      reset_user_tokens: { Args: { p_user_id: string }; Returns: undefined }
+      upgrade_user_plan: {
+        Args: {
+          p_plan: Database["public"]["Enums"]["subscription_plan"]
+          p_stripe_customer_id?: string
+          p_stripe_subscription_id?: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      subscription_plan: "FREE" | "CREATOR" | "PRO"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -499,6 +644,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      subscription_plan: ["FREE", "CREATOR", "PRO"],
     },
   },
 } as const
