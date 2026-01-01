@@ -5,24 +5,23 @@ import creatorAiLogo from '@/assets/creator-ai-logo.png';
 
 const footerLinks = {
   product: [
-    { name: 'Features', href: '/#features' },
-    { name: 'Pricing', href: '/#pricing' },
-    { name: 'How It Works', href: '/#how-it-works' },
+    { name: 'Features', href: '#features' },
+    { name: 'Pricing', href: '#pricing' },
+    { name: 'How It Works', href: '#how-it-works' },
   ],
   resources: [
     { name: 'Blog', href: '/blog' },
-    { name: 'Tutorials', href: '/tutorials' },
-    { name: 'Documentation', href: '/docs' },
+    { name: 'Dashboard', href: '/dashboard' },
+    { name: 'Get Started', href: '/auth' },
   ],
   company: [
-    { name: 'About', href: '/about' },
-    { name: 'Contact', href: '/contact' },
-    { name: 'Careers', href: '/careers' },
+    { name: 'Thumbnail Generator', href: '/dashboard/thumbnail' },
+    { name: 'Video Ideas', href: '/dashboard/ideas' },
+    { name: 'Niche Analyzer', href: '/dashboard/niche' },
   ],
   legal: [
-    { name: 'Privacy', href: '/privacy' },
-    { name: 'Terms', href: '/terms' },
-    { name: 'Cookies', href: '/cookies' },
+    { name: 'Sign In', href: '/auth' },
+    { name: 'Admin', href: '/admin' },
   ],
 };
 
@@ -75,12 +74,12 @@ export const Footer: React.FC = () => {
             <ul className="space-y-3">
               {footerLinks.product.map((link) => (
                 <li key={link.name}>
-                  <Link
-                    to={link.href}
+                  <a
+                    href={link.href}
                     className="text-sm text-ice-blue/50 hover:text-ice-blue transition-colors duration-300"
                   >
                     {link.name}
-                  </Link>
+                  </a>
                 </li>
               ))}
             </ul>
@@ -103,7 +102,7 @@ export const Footer: React.FC = () => {
           </div>
 
           <div>
-            <h4 className="font-semibold text-sm text-ice-blue/90 mb-5 uppercase tracking-wider">Company</h4>
+            <h4 className="font-semibold text-sm text-ice-blue/90 mb-5 uppercase tracking-wider">Tools</h4>
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
                 <li key={link.name}>
@@ -119,7 +118,7 @@ export const Footer: React.FC = () => {
           </div>
 
           <div>
-            <h4 className="font-semibold text-sm text-ice-blue/90 mb-5 uppercase tracking-wider">Legal</h4>
+            <h4 className="font-semibold text-sm text-ice-blue/90 mb-5 uppercase tracking-wider">Account</h4>
             <ul className="space-y-3">
               {footerLinks.legal.map((link) => (
                 <li key={link.name}>
