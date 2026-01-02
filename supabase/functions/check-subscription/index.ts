@@ -14,8 +14,15 @@ const logStep = (step: string, details?: any) => {
 
 // Map Stripe product IDs to subscription plans
 const PRODUCT_TO_PLAN: Record<string, string> = {
-  "prod_SSZaHsLaFBxkx5": "CREATOR",
-  "prod_SSZbNGxuZMlP2M": "PRO",
+  "prod_TiWC2gNkum9OVJ": "CREATOR",
+  "prod_TiWDgLPNzQTa8f": "PRO",
+};
+
+// Token limits per plan
+const PLAN_TOKEN_LIMITS: Record<string, number> = {
+  "FREE": 20,
+  "CREATOR": 500,
+  "PRO": 2000,
 };
 
 serve(async (req) => {
@@ -38,25 +45,35 @@ serve(async (req) => {
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
+    logStep("Authorization header found");
 
     const token = authHeader.replace("Bearer ", "");
+    logStep("Authenticating user with token");
+    
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-
+    
     if (customers.data.length === 0) {
-      logStep("No customer found, user is on free plan");
+      logStep("No customer found, checking for existing subscription record");
+      
+      // Get current subscription from database
+      const { data: existingSub } = await supabaseClient
+        .from("subscriptions")
+        .select("plan, tokens_remaining, tokens_monthly_limit, plan_expiry")
+        .eq("user_id", user.id)
+        .single();
+      
       return new Response(JSON.stringify({ 
         subscribed: false,
-        plan: "FREE",
-        product_id: null,
-        subscription_end: null
+        plan: existingSub?.plan || "FREE",
+        tokens_remaining: existingSub?.tokens_remaining || 20,
+        tokens_monthly_limit: existingSub?.tokens_monthly_limit || 20,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -71,65 +88,70 @@ serve(async (req) => {
       status: "active",
       limit: 1,
     });
+    
+    const hasActiveSub = subscriptions.data.length > 0;
+    let plan = "FREE";
+    let productId = null;
+    let subscriptionEnd = null;
 
-    if (subscriptions.data.length === 0) {
+    if (hasActiveSub) {
+      const subscription = subscriptions.data[0];
+      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      productId = subscription.items.data[0].price.product as string;
+      plan = PRODUCT_TO_PLAN[productId] || "FREE";
+      logStep("Active subscription found", { subscriptionId: subscription.id, productId, plan, endDate: subscriptionEnd });
+    } else {
       logStep("No active subscription found");
-      return new Response(JSON.stringify({ 
-        subscribed: false,
-        plan: "FREE",
-        product_id: null,
-        subscription_end: null
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
     }
 
-    const subscription = subscriptions.data[0];
-    const productId = subscription.items.data[0].price.product as string;
-    const subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-    const plan = PRODUCT_TO_PLAN[productId] || "FREE";
+    // Get current subscription from database to check if plan changed
+    const { data: currentSub } = await supabaseClient
+      .from("subscriptions")
+      .select("plan, tokens_remaining")
+      .eq("user_id", user.id)
+      .single();
 
-    logStep("Active subscription found", { 
-      subscriptionId: subscription.id, 
-      productId,
-      plan,
-      endDate: subscriptionEnd 
-    });
+    const tokenLimit = PLAN_TOKEN_LIMITS[plan] || 20;
+    
+    // Only reset tokens if plan is being upgraded
+    const shouldResetTokens = currentSub && currentSub.plan !== plan && 
+      (plan === "PRO" || (plan === "CREATOR" && currentSub.plan === "FREE"));
+    
+    const newTokens = shouldResetTokens ? tokenLimit : (currentSub?.tokens_remaining || tokenLimit);
 
     // Update the user's subscription in the database
-    const tokenLimit = plan === "PRO" ? 2000 : plan === "CREATOR" ? 500 : 20;
-    
     const { error: updateError } = await supabaseClient
       .from("subscriptions")
       .update({
         plan: plan,
-        tokens_remaining: tokenLimit,
+        tokens_remaining: newTokens,
         tokens_monthly_limit: tokenLimit,
         plan_expiry: subscriptionEnd,
         stripe_customer_id: customerId,
-        stripe_subscription_id: subscription.id,
+        stripe_subscription_id: hasActiveSub ? subscriptions.data[0].id : null,
       })
       .eq("user_id", user.id);
 
     if (updateError) {
-      logStep("Error updating subscription in database", { error: updateError.message });
+      logStep("ERROR updating subscription", { error: updateError.message });
     } else {
-      logStep("Subscription updated in database");
+      logStep("Subscription updated in database", { plan, tokenLimit, tokensReset: shouldResetTokens });
     }
 
     return new Response(JSON.stringify({
-      subscribed: true,
+      subscribed: hasActiveSub,
       plan: plan,
       product_id: productId,
-      subscription_end: subscriptionEnd
+      subscription_end: subscriptionEnd,
+      tokens_remaining: newTokens,
+      tokens_monthly_limit: tokenLimit,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR", { message: errorMessage });
+    logStep("ERROR in check-subscription", { message: errorMessage });
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
