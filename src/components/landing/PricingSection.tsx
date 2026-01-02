@@ -9,8 +9,8 @@ import { toast } from '@/hooks/use-toast';
 
 // Stripe price IDs for each plan
 const PRICE_IDS = {
-  creator: 'price_1RXRvzBZ3oHGezWnGQvfDK4L',
-  pro: 'price_1RXRxnBZ3oHGezWnJPLQHiB7',
+  creator: 'price_1Sl5A5Gxadm9TBllaFi2usk0',
+  pro: 'price_1Sl5BQGxadm9TBlltlRwdI9m',
 };
 
 const plans = [
