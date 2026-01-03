@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { FeatureGate } from '@/components/FeatureGate';
 
 interface VideoIdea {
   title: string;
@@ -89,7 +90,7 @@ const VideoIdeas = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <FeatureGate featureId="idea_generation">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -294,7 +295,7 @@ const VideoIdeas = () => {
           </div>
         </motion.div>
       )}
-    </div>
+    </FeatureGate>
   );
 };
 

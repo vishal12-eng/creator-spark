@@ -18,6 +18,9 @@ import AIChat from "./pages/AIChat";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
 import NicheAnalyzer from "./pages/NicheAnalyzer";
+import ContentCalendar from "./pages/ContentCalendar";
+import BatchGeneration from "./pages/BatchGeneration";
+import AdvancedScripting from "./pages/AdvancedScripting";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import Admin from "./pages/Admin";
@@ -51,6 +54,9 @@ const App = () => (
                   <Route path="branding" element={<Branding />} />
                   <Route path="niche" element={<NicheAnalyzer />} />
                   <Route path="chat" element={<AIChat />} />
+                  <Route path="calendar" element={<ContentCalendar />} />
+                  <Route path="batch" element={<BatchGeneration />} />
+                  <Route path="scripting" element={<AdvancedScripting />} />
                   <Route path="history" element={<History />} />
                   <Route path="settings" element={<Settings />} />
                 </Route>

@@ -1,50 +1,102 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import {
-  Image,
-  Lightbulb,
-  BarChart3,
-  Palette,
-  Bot,
-  TrendingUp,
+import { PlanBadge } from '@/components/PlanBadge';
+import { TokenDisplay } from '@/components/TokenDisplay';
+import { 
+  Lightbulb, 
+  Image, 
+  BarChart3, 
+  Palette, 
+  Bot, 
+  Target,
   Zap,
+  TrendingUp,
+  Calendar,
+  Layers,
+  FileVideo,
+  Crown,
   ArrowRight,
-  Sparkles,
-  Loader2,
+  Sparkles
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useFeatureAccess, type FeatureId } from '@/hooks/useFeatureAccess';
 
 const quickActions = [
   {
-    name: 'Generate Thumbnail',
-    description: 'Create high-CTR thumbnails',
+    name: 'Thumbnail Generator',
+    description: 'Create eye-catching thumbnails',
     icon: Image,
     href: '/dashboard/thumbnail',
     color: 'from-cyan-500 to-blue-500',
+    featureId: 'image_generation' as FeatureId,
   },
   {
-    name: 'Get Video Ideas',
-    description: 'Viral content suggestions',
+    name: 'Video Ideas',
+    description: 'Generate viral video concepts',
     icon: Lightbulb,
     href: '/dashboard/ideas',
     color: 'from-yellow-500 to-orange-500',
+    featureId: 'idea_generation' as FeatureId,
   },
   {
-    name: 'Analyze Content',
-    description: 'SEO & CTR analysis',
+    name: 'Niche Analyzer',
+    description: 'Find profitable niches',
+    icon: Target,
+    href: '/dashboard/niche',
+    color: 'from-green-500 to-emerald-500',
+    featureId: 'niche_analyzer' as FeatureId,
+  },
+  {
+    name: 'Content Analytics',
+    description: 'Analyze your performance',
     icon: BarChart3,
     href: '/dashboard/analytics',
-    color: 'from-green-500 to-emerald-500',
+    color: 'from-purple-500 to-violet-500',
+    featureId: 'content_analytics' as FeatureId,
   },
   {
     name: 'AI Assistant',
-    description: 'Get personalized help',
+    description: 'Get personalized advice',
     icon: Bot,
     href: '/dashboard/chat',
-    color: 'from-purple-500 to-pink-500',
+    color: 'from-pink-500 to-rose-500',
+    featureId: 'ai_chat' as FeatureId,
+  },
+  {
+    name: 'Channel Branding',
+    description: 'Build your brand identity',
+    icon: Palette,
+    href: '/dashboard/branding',
+    color: 'from-indigo-500 to-blue-500',
+    featureId: 'brand_profile' as FeatureId,
+  },
+];
+
+const proFeatures = [
+  {
+    name: 'Content Calendar',
+    description: 'Schedule & plan content',
+    icon: Calendar,
+    href: '/dashboard/calendar',
+    featureId: 'content_calendar' as FeatureId,
+  },
+  {
+    name: 'Batch Generation',
+    description: 'Generate content in bulk',
+    icon: Layers,
+    href: '/dashboard/batch',
+    featureId: 'batch_generation' as FeatureId,
+  },
+  {
+    name: 'Advanced Scripting',
+    description: 'Pro video scripts',
+    icon: FileVideo,
+    href: '/dashboard/scripting',
+    featureId: 'advanced_video_scripting' as FeatureId,
   },
 ];
 
@@ -55,76 +107,52 @@ interface Stats {
 }
 
 interface RecentActivity {
-  type: 'thumbnail' | 'idea' | 'chat';
+  type: string;
   title: string;
-  time: string;
+  date: string;
 }
 
 const Dashboard: React.FC = () => {
-  const { user, session } = useAuth();
+  const { user, subscription } = useAuth();
+  const { checkFeatureAccess, currentPlan } = useFeatureAccess();
   const [stats, setStats] = useState<Stats>({ thumbnails: 0, ideas: 0, chats: 0 });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (session?.user) {
+    if (user) {
       loadDashboardData();
     }
-  }, [session]);
+  }, [user]);
 
   const loadDashboardData = async () => {
     try {
-      // Get counts
-      const [thumbResult, ideasResult, chatsResult] = await Promise.all([
-        supabase.from('thumbnails').select('id', { count: 'exact', head: true }),
-        supabase.from('video_ideas').select('id', { count: 'exact', head: true }),
-        supabase.from('chat_messages').select('id', { count: 'exact', head: true }).eq('role', 'user'),
+      const [thumbnailsRes, ideasRes, chatsRes] = await Promise.all([
+        supabase.from('thumbnails').select('id', { count: 'exact' }).eq('user_id', user!.id),
+        supabase.from('video_ideas').select('id', { count: 'exact' }).eq('user_id', user!.id),
+        supabase.from('chat_messages').select('id', { count: 'exact' }).eq('user_id', user!.id).eq('role', 'user'),
       ]);
 
       setStats({
-        thumbnails: thumbResult.count || 0,
-        ideas: ideasResult.count || 0,
-        chats: chatsResult.count || 0,
+        thumbnails: thumbnailsRes.count || 0,
+        ideas: ideasRes.count || 0,
+        chats: chatsRes.count || 0,
       });
 
-      // Get recent activity
-      const activities: RecentActivity[] = [];
-
-      const { data: recentThumbs } = await supabase
+      const { data: recentThumbnails } = await supabase
         .from('thumbnails')
         .select('title, created_at')
+        .eq('user_id', user!.id)
         .order('created_at', { ascending: false })
-        .limit(2);
+        .limit(5);
 
-      recentThumbs?.forEach(t => {
-        activities.push({
-          type: 'thumbnail',
-          title: t.title,
-          time: formatTimeAgo(new Date(t.created_at)),
-        });
-      });
+      const activities: RecentActivity[] = (recentThumbnails || []).map((t) => ({
+        type: 'Thumbnail',
+        title: t.title,
+        date: t.created_at,
+      }));
 
-      const { data: recentIdeas } = await supabase
-        .from('video_ideas')
-        .select('niche, platform, created_at')
-        .order('created_at', { ascending: false })
-        .limit(2);
-
-      recentIdeas?.forEach(i => {
-        activities.push({
-          type: 'idea',
-          title: `${i.niche} ideas for ${i.platform}`,
-          time: formatTimeAgo(new Date(i.created_at)),
-        });
-      });
-
-      // Sort by most recent
-      activities.sort((a, b) => {
-        // Simple sort - recent items first
-        return 0;
-      });
-
-      setRecentActivity(activities.slice(0, 4));
+      setRecentActivity(activities);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
@@ -132,25 +160,20 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const formatTimeAgo = (date: Date): string => {
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
     const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
 
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    if (diffDays === 1) return 'Yesterday';
-    return `${diffDays} days ago`;
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    return date.toLocaleDateString();
   };
 
-  const statsDisplay = [
-    { label: 'Thumbnails Created', value: stats.thumbnails.toString(), icon: Image, change: '' },
-    { label: 'Ideas Generated', value: stats.ideas.toString(), icon: Lightbulb, change: '' },
-    { label: 'Chat Messages', value: stats.chats.toString(), icon: Bot, change: '' },
-    { label: 'AI Powered', value: '100%', icon: TrendingUp, change: '' },
-  ];
+  const tokensRemaining = subscription?.tokensRemaining ?? 20;
+  const tokensLimit = subscription?.tokensLimit ?? 20;
 
   return (
     <div className="space-y-8">
@@ -158,86 +181,117 @@ const Dashboard: React.FC = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl p-8 glass glow-primary"
+        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
       >
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-3xl" />
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="w-5 h-5 text-primary" />
-            <span className="text-sm font-medium text-primary">Welcome back</span>
-          </div>
-          <h1 className="text-3xl font-display font-bold mb-2">
-            Hello, {user?.name}! 👋
+        <div>
+          <h1 className="text-3xl font-display font-bold">
+            Welcome back, <span className="gradient-text">{user?.name || 'Creator'}</span>!
           </h1>
-          <p className="text-muted-foreground max-w-xl">
-            Ready to create some amazing content? Your AI-powered creator tools are ready to help you grow faster.
+          <p className="text-muted-foreground mt-1">
+            Here's what's happening with your content creation journey.
           </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <PlanBadge plan={currentPlan} />
+          <TokenDisplay compact />
         </div>
       </motion.div>
 
       {/* Quick Actions */}
-      <div>
-        <h2 className="text-xl font-display font-semibold mb-4">Quick Actions</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {quickActions.map((action, index) => (
-            <motion.div
-              key={action.name}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Link to={action.href}>
-                <Card className="group cursor-pointer hover:shadow-glow transition-all duration-300">
-                  <CardContent className="p-6">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                      <action.icon className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-semibold mb-1">{action.name}</h3>
-                    <p className="text-sm text-muted-foreground">{action.description}</p>
-                  </CardContent>
-                </Card>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div>
-        <h2 className="text-xl font-display font-semibold mb-4">Your Stats</h2>
-        {isLoading ? (
-          <div className="flex items-center justify-center h-32">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          </div>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {statsDisplay.map((stat, index) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card variant="glass">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <stat.icon className="w-5 h-5 text-primary" />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {quickActions.map((action, index) => {
+            const access = checkFeatureAccess(action.featureId);
+            return (
+              <Link key={action.name} to={action.href}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + index * 0.05 }}
+                >
+                  <Card className="group cursor-pointer hover:border-primary/50 transition-all duration-300 relative overflow-hidden">
+                    {access.isLimited && (
+                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-500 text-xs font-medium">
+                        Limited
                       </div>
-                    </div>
-                    <div className="text-2xl font-display font-bold mb-1">{stat.value}</div>
-                    <div className="text-sm text-muted-foreground">{stat.label}</div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
+                    )}
+                    <CardContent className="p-6">
+                      <div className="flex items-start gap-4">
+                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                          <action.icon className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold group-hover:text-primary transition-colors">
+                            {action.name}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">{action.description}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </Link>
+            );
+          })}
+        </div>
+      </motion.div>
 
-      {/* Two Column Layout */}
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Recent Activity */}
+      {/* Pro Features Section */}
+      {currentPlan !== 'PRO' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2">
+                <Crown className="w-5 h-5 text-primary" />
+                Unlock Pro Features
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid sm:grid-cols-3 gap-4 mb-4">
+                {proFeatures.map((feature) => {
+                  const access = checkFeatureAccess(feature.featureId);
+                  return (
+                    <Link
+                      key={feature.name}
+                      to={feature.href}
+                      className="flex items-center gap-3 p-3 rounded-lg bg-background/50 hover:bg-background/80 transition-colors"
+                    >
+                      <feature.icon className="w-5 h-5 text-primary" />
+                      <div>
+                        <p className="font-medium text-sm">{feature.name}</p>
+                        <p className="text-xs text-muted-foreground">{feature.description}</p>
+                      </div>
+                      {!access.hasAccess && (
+                        <span className="ml-auto text-xs px-2 py-0.5 bg-muted rounded-full">PRO</span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+              <Link to="/#pricing">
+                <Button variant="premium" className="w-full sm:w-auto">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Upgrade to Pro
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Stats & Activity */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Stats */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -245,39 +299,40 @@ const Dashboard: React.FC = () => {
         >
           <Card>
             <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                Your Stats
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              {recentActivity.length === 0 ? (
-                <p className="text-muted-foreground text-sm py-4">
-                  No recent activity. Start creating to see your history here!
-                </p>
+              {isLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                </div>
               ) : (
-                <div className="space-y-4">
-                  {recentActivity.map((activity, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        {activity.type === 'thumbnail' && <Image className="w-5 h-5 text-primary" />}
-                        {activity.type === 'idea' && <Lightbulb className="w-5 h-5 text-primary" />}
-                        {activity.type === 'chat' && <Bot className="w-5 h-5 text-primary" />}
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-medium">{activity.title}</div>
-                        <div className="text-sm text-muted-foreground">{activity.time}</div>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                  ))}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center p-4 rounded-xl bg-muted/50">
+                    <Image className="w-8 h-8 mx-auto mb-2 text-cyan-500" />
+                    <p className="text-2xl font-bold">{stats.thumbnails}</p>
+                    <p className="text-xs text-muted-foreground">Thumbnails</p>
+                  </div>
+                  <div className="text-center p-4 rounded-xl bg-muted/50">
+                    <Lightbulb className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
+                    <p className="text-2xl font-bold">{stats.ideas}</p>
+                    <p className="text-xs text-muted-foreground">Ideas</p>
+                  </div>
+                  <div className="text-center p-4 rounded-xl bg-muted/50">
+                    <Bot className="w-8 h-8 mx-auto mb-2 text-pink-500" />
+                    <p className="text-2xl font-bold">{stats.chats}</p>
+                    <p className="text-xs text-muted-foreground">AI Chats</p>
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Pro Tips */}
+        {/* Recent Activity */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -286,31 +341,37 @@ const Dashboard: React.FC = () => {
           <Card className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Zap className="w-5 h-5 text-primary" />
-                Pro Tips
+                <Zap className="w-5 h-5" />
+                Recent Activity
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">
-                  <h4 className="font-semibold mb-2">Boost Your CTR</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Use faces with strong emotions in your thumbnails. Studies show faces can increase CTR by up to 38%.
-                  </p>
+              {recentActivity.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Sparkles className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                  <p>No activity yet. Start creating!</p>
                 </div>
-                <div className="p-4 rounded-lg bg-accent/5 border border-accent/10">
-                  <h4 className="font-semibold mb-2">Perfect Title Length</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Keep your video titles under 60 characters for maximum visibility in search and suggested videos.
-                  </p>
+              ) : (
+                <div className="space-y-3">
+                  {recentActivity.map((activity, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Image className="w-4 h-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm truncate max-w-[200px]">{activity.title}</p>
+                          <p className="text-xs text-muted-foreground">{activity.type}</p>
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{formatTimeAgo(activity.date)}</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="p-4 rounded-lg bg-pink-500/5 border border-pink-500/10">
-                  <h4 className="font-semibold mb-2">Hook in 5 Seconds</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Use our AI to generate powerful hooks that capture attention in the first 5 seconds of your video.
-                  </p>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

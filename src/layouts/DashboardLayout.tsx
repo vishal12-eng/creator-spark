@@ -25,6 +25,8 @@ import {
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { Calendar, Layers, FileVideo } from 'lucide-react';
+
 const sidebarLinks = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Thumbnail Generator', href: '/dashboard/thumbnail', icon: Image },
@@ -33,10 +35,17 @@ const sidebarLinks = [
   { name: 'Content Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { name: 'Channel Branding', href: '/dashboard/branding', icon: Palette },
   { name: 'AI Assistant', href: '/dashboard/chat', icon: Bot },
+  { name: 'Content Calendar', href: '/dashboard/calendar', icon: Calendar, pro: true },
+  { name: 'Batch Generation', href: '/dashboard/batch', icon: Layers, pro: true },
+  { name: 'Advanced Scripting', href: '/dashboard/scripting', icon: FileVideo, pro: true },
   { name: 'History', href: '/dashboard/history', icon: History },
 ];
 
+import { useFeatureAccess } from '@/hooks/useFeatureAccess';
+import { Crown } from 'lucide-react';
+
 const DashboardLayout: React.FC = () => {
+  const { currentPlan } = useFeatureAccess();
   const { user, logout, isLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
@@ -103,6 +112,8 @@ const DashboardLayout: React.FC = () => {
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin">
             {sidebarLinks.map((link) => {
               const isActive = location.pathname === link.href;
+              const isPro = (link as any).pro;
+              const isLocked = isPro && currentPlan !== 'PRO';
               return (
                 <Link
                   key={link.name}
@@ -111,12 +122,17 @@ const DashboardLayout: React.FC = () => {
                     isActive
                       ? 'bg-sidebar-primary text-sidebar-primary-foreground'
                       : 'text-sidebar-foreground hover:bg-sidebar-accent'
-                  }`}
+                  } ${isLocked ? 'opacity-70' : ''}`}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <link.icon className="w-5 h-5" />
                   <span className="font-medium">{link.name}</span>
-                  {isActive && <ChevronRight className="w-4 h-4 ml-auto" />}
+                  {isPro && (
+                    <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded ${isLocked ? 'bg-primary/20 text-primary' : 'bg-green-500/20 text-green-400'}`}>
+                      {isLocked ? 'PRO' : <Crown className="w-3 h-3" />}
+                    </span>
+                  )}
+                  {isActive && !isPro && <ChevronRight className="w-4 h-4 ml-auto" />}
                 </Link>
               );
             })}
