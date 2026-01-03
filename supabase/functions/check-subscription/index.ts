@@ -144,7 +144,7 @@ serve(async (req) => {
       product_id: productId,
       subscription_end: subscriptionEnd,
       tokens_remaining: newTokens,
-      tokens_monthly_limit: tokenLimit,
+      tokens_limit: tokenLimit,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

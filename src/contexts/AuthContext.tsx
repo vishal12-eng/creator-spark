@@ -13,6 +13,8 @@ interface SubscriptionState {
   subscribed: boolean;
   plan: 'FREE' | 'CREATOR' | 'PRO';
   subscriptionEnd: string | null;
+  tokensRemaining: number;
+  tokensLimit: number;
   isLoading: boolean;
 }
 
@@ -57,6 +59,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     subscribed: false,
     plan: 'FREE',
     subscriptionEnd: null,
+    tokensRemaining: 20,
+    tokensLimit: 20,
     isLoading: false,
   });
 
@@ -66,6 +70,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         subscribed: false,
         plan: 'FREE',
         subscriptionEnd: null,
+        tokensRemaining: 20,
+        tokensLimit: 20,
         isLoading: false,
       });
       return;
@@ -85,6 +91,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         subscribed: data?.subscribed ?? false,
         plan: data?.plan ?? 'FREE',
         subscriptionEnd: data?.subscription_end ?? null,
+        tokensRemaining: data?.tokens_remaining ?? 20,
+        tokensLimit: data?.tokens_limit ?? 20,
         isLoading: false,
       });
     } catch (error) {
@@ -199,6 +207,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       subscribed: false,
       plan: 'FREE',
       subscriptionEnd: null,
+      tokensRemaining: 20,
+      tokensLimit: 20,
       isLoading: false,
     });
   };

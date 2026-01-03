@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { FeatureGate } from '@/components/FeatureGate';
 import {
   Image,
   Upload,
@@ -166,41 +167,40 @@ const ThumbnailGenerator: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
-            <Image className="w-5 h-5 text-white" />
-          </div>
-          <h1 className="text-2xl font-display font-bold">AI Thumbnail Generator</h1>
-        </div>
-        <p className="text-muted-foreground">
-          Create eye-catching, high-CTR thumbnails with AI-powered image generation.
-        </p>
-      </motion.div>
-
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Input Form */}
+    <FeatureGate featureId="image_generation">
+      <div className="space-y-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
         >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="w-5 h-5" />
-                Thumbnail Settings
-              </CardTitle>
-              <CardDescription>
-                Configure your thumbnail generation preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
+              <Image className="w-5 h-5 text-white" />
+            </div>
+            <h1 className="text-2xl font-display font-bold">AI Thumbnail Generator</h1>
+          </div>
+          <p className="text-muted-foreground">
+            Create eye-catching, high-CTR thumbnails with AI-powered image generation.
+          </p>
+        </motion.div>
+
+        <div className="grid lg:grid-cols-2 gap-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    Thumbnail Settings
+                  </CardTitle>
+                  <CardDescription>
+                    Configure your thumbnail generation preferences
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
               {/* Video Title */}
               <div className="space-y-2">
                 <Label htmlFor="title">Video Title *</Label>
@@ -373,8 +373,9 @@ const ThumbnailGenerator: React.FC = () => {
             </CardContent>
           </Card>
         </motion.div>
+        </div>
       </div>
-    </div>
+    </FeatureGate>
   );
 };
 
