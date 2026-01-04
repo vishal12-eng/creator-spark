@@ -1,8 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const TOKEN_COST = 1; // ai_chat costs 1 token
+
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[AI-CHAT] ${step}${detailsStr}`);
 };
 
 serve(async (req) => {
@@ -11,14 +19,80 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    logStep("Function started");
     
+    const { messages } = await req.json();
+    
+    // Initialize Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+    
+    // Authenticate user
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      throw new Error("No authorization header provided");
+    }
+    
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    
+    const user = userData.user;
+    if (!user) throw new Error("User not authenticated");
+    logStep("User authenticated", { userId: user.id });
+    
+    // Get user's subscription
+    const { data: subscription, error: subError } = await supabaseClient
+      .from("subscriptions")
+      .select("plan, tokens_remaining")
+      .eq("user_id", user.id)
+      .single();
+    
+    if (subError || !subscription) {
+      throw new Error("Could not verify subscription status");
+    }
+    
+    logStep("User subscription", { plan: subscription.plan, tokens: subscription.tokens_remaining });
+    
+    // Check tokens
+    if (subscription.tokens_remaining < TOKEN_COST) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: "insufficient_tokens",
+        message: `You need ${TOKEN_COST} tokens. You have ${subscription.tokens_remaining} tokens remaining.`,
+        tokensRequired: TOKEN_COST,
+        tokensRemaining: subscription.tokens_remaining,
+      }), {
+        status: 402,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    // Deduct tokens
+    const { data: deductResult, error: deductError } = await supabaseClient.rpc('deduct_tokens', {
+      p_user_id: user.id,
+      p_amount: TOKEN_COST,
+      p_action: 'ai_chat',
+      p_feature: 'ai_chat',
+      p_metadata: { messageCount: messages.length }
+    });
+    
+    if (deductError || !deductResult) {
+      logStep("ERROR: Token deduction failed", { error: deductError?.message });
+      throw new Error("Failed to deduct tokens");
+    }
+    
+    logStep("Tokens deducted", { cost: TOKEN_COST });
+    
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log(`Processing chat with ${messages.length} messages`);
+    logStep(`Processing chat with ${messages.length} messages`);
 
     const systemPrompt = `You are CreatorAI Assistant, an expert AI helper for content creators on YouTube, Instagram, TikTok, and other platforms. You specialize in:
 
