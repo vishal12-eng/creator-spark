@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { FeatureGate } from '@/components/FeatureGate';
 
 interface AnalysisResult {
   seoScore: number;
@@ -107,6 +108,7 @@ const Analytics = () => {
   };
 
   return (
+    <FeatureGate featureId="content_analytics">
     <div className="space-y-8">
       {/* Header */}
       <motion.div
@@ -345,6 +347,7 @@ const Analytics = () => {
         </motion.div>
       )}
     </div>
+    </FeatureGate>
   );
 };
 

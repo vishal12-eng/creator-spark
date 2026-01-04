@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { FeatureGate } from '@/components/FeatureGate';
 
 interface Message {
   id: string;
@@ -186,6 +187,7 @@ const AIChat = () => {
   };
 
   return (
+    <FeatureGate featureId="ai_chat">
     <div className="h-[calc(100vh-8rem)] flex flex-col">
       {/* Header */}
       <motion.div
@@ -308,6 +310,7 @@ const AIChat = () => {
         </div>
       </Card>
     </div>
+    </FeatureGate>
   );
 };
 

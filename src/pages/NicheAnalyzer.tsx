@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { FeatureGate } from '@/components/FeatureGate';
 
 interface NicheAnalysisResult {
   competitionLevel: string;
@@ -110,6 +111,7 @@ const NicheAnalyzer = () => {
   };
 
   return (
+    <FeatureGate featureId="niche_analyzer">
     <div className="space-y-8">
       {/* Header */}
       <motion.div
@@ -367,6 +369,7 @@ const NicheAnalyzer = () => {
         </motion.div>
       )}
     </div>
+    </FeatureGate>
   );
 };
 

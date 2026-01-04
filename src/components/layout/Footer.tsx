@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Twitter, Youtube, Instagram, Github } from 'lucide-react';
 import creatorAiLogo from '@/assets/creator-ai-logo.png';
+import { useAuth } from '@/contexts/AuthContext';
 
 const footerLinks = {
   product: [
@@ -19,10 +20,6 @@ const footerLinks = {
     { name: 'Video Ideas', href: '/dashboard/ideas' },
     { name: 'Niche Analyzer', href: '/dashboard/niche' },
   ],
-  legal: [
-    { name: 'Sign In', href: '/auth' },
-    { name: 'Admin', href: '/admin' },
-  ],
 };
 
 const socialLinks = [
@@ -33,6 +30,7 @@ const socialLinks = [
 ];
 
 export const Footer: React.FC = () => {
+  const { user } = useAuth();
   return (
     <footer className="relative border-t border-ice-blue/10 bg-deep-navy-900/80 backdrop-blur-xl">
       {/* Subtle top glow */}
@@ -120,16 +118,36 @@ export const Footer: React.FC = () => {
           <div>
             <h4 className="font-semibold text-sm text-ice-blue/90 mb-5 uppercase tracking-wider">Account</h4>
             <ul className="space-y-3">
-              {footerLinks.legal.map((link) => (
-                <li key={link.name}>
+              {!user && (
+                <li>
                   <Link
-                    to={link.href}
+                    to="/auth"
                     className="text-sm text-ice-blue/50 hover:text-ice-blue transition-colors duration-300"
                   >
-                    {link.name}
+                    Sign In
                   </Link>
                 </li>
-              ))}
+              )}
+              {user && (
+                <>
+                  <li>
+                    <Link
+                      to="/dashboard"
+                      className="text-sm text-ice-blue/50 hover:text-ice-blue transition-colors duration-300"
+                    >
+                      Dashboard
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/dashboard/settings"
+                      className="text-sm text-ice-blue/50 hover:text-ice-blue transition-colors duration-300"
+                    >
+                      Settings
+                    </Link>
+                  </li>
+                </>
+              )}
             </ul>
           </div>
         </div>
