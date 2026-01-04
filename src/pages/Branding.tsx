@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { FeatureGate } from '@/components/FeatureGate';
 
 interface BrandingResult {
   channelNames: string[];
@@ -88,6 +89,7 @@ const Branding = () => {
   };
 
   return (
+    <FeatureGate featureId="brand_profile">
     <div className="space-y-8">
       {/* Header */}
       <motion.div
@@ -348,6 +350,7 @@ const Branding = () => {
         </motion.div>
       )}
     </div>
+    </FeatureGate>
   );
 };
 
