@@ -1,8 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const TOKEN_COST = 1; // idea_generation costs 1 token
+
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[GENERATE-VIDEO-IDEAS] ${step}${detailsStr}`);
 };
 
 serve(async (req) => {
@@ -11,14 +19,80 @@ serve(async (req) => {
   }
 
   try {
-    const { niche, platform, count = 5 } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    logStep("Function started");
     
+    const { niche, platform, count = 5 } = await req.json();
+    
+    // Initialize Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+    
+    // Authenticate user
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      throw new Error("No authorization header provided");
+    }
+    
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    
+    const user = userData.user;
+    if (!user) throw new Error("User not authenticated");
+    logStep("User authenticated", { userId: user.id });
+    
+    // Get user's subscription
+    const { data: subscription, error: subError } = await supabaseClient
+      .from("subscriptions")
+      .select("plan, tokens_remaining")
+      .eq("user_id", user.id)
+      .single();
+    
+    if (subError || !subscription) {
+      throw new Error("Could not verify subscription status");
+    }
+    
+    logStep("User subscription", { plan: subscription.plan, tokens: subscription.tokens_remaining });
+    
+    // Check tokens
+    if (subscription.tokens_remaining < TOKEN_COST) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: "insufficient_tokens",
+        message: `You need ${TOKEN_COST} tokens. You have ${subscription.tokens_remaining} tokens remaining.`,
+        tokensRequired: TOKEN_COST,
+        tokensRemaining: subscription.tokens_remaining,
+      }), {
+        status: 402,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    // Deduct tokens
+    const { data: deductResult, error: deductError } = await supabaseClient.rpc('deduct_tokens', {
+      p_user_id: user.id,
+      p_amount: TOKEN_COST,
+      p_action: 'idea_generation',
+      p_feature: 'video_ideas',
+      p_metadata: { niche, platform, count }
+    });
+    
+    if (deductError || !deductResult) {
+      logStep("ERROR: Token deduction failed", { error: deductError?.message });
+      throw new Error("Failed to deduct tokens");
+    }
+    
+    logStep("Tokens deducted", { cost: TOKEN_COST });
+    
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log(`Generating ${count} video ideas for niche: ${niche}, platform: ${platform}`);
+    logStep(`Generating ${count} video ideas for niche: ${niche}, platform: ${platform}`);
 
     const systemPrompt = `You are an expert content strategist specializing in ${platform} content creation. Generate viral video ideas that are optimized for engagement and discoverability.
 
@@ -73,13 +147,11 @@ Format your response as a JSON array with objects containing: title, description
     // Parse JSON from the response
     let ideas;
     try {
-      // Extract JSON from markdown code blocks if present
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
       const jsonStr = jsonMatch ? jsonMatch[1] : content;
       ideas = JSON.parse(jsonStr.trim());
     } catch (parseError) {
       console.error("Failed to parse AI response as JSON:", parseError);
-      // Return a structured fallback based on the raw content
       ideas = [{
         title: "Video Idea",
         description: content,
@@ -90,9 +162,20 @@ Format your response as a JSON array with objects containing: title, description
       }];
     }
 
-    console.log(`Generated ${ideas.length} video ideas successfully`);
+    // Get updated token count
+    const { data: updatedSub } = await supabaseClient
+      .from("subscriptions")
+      .select("tokens_remaining")
+      .eq("user_id", user.id)
+      .single();
 
-    return new Response(JSON.stringify({ ideas }), {
+    logStep(`Generated ${ideas.length} video ideas successfully`);
+
+    return new Response(JSON.stringify({ 
+      ideas,
+      tokensUsed: TOKEN_COST,
+      tokensRemaining: updatedSub?.tokens_remaining ?? 0,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

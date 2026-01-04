@@ -208,7 +208,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ open, onOpenChange, require
           <Button
             onClick={() => {
               onOpenChange(false);
-              navigate('/#pricing');
+              // Navigate to homepage and scroll to pricing section
+              window.location.href = '/#pricing';
             }}
             className={`flex-1 bg-gradient-to-r ${planColors[requiredPlan]} text-white`}
           >
