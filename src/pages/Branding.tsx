@@ -9,6 +9,9 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { FeatureGate } from '@/components/FeatureGate';
+import { TokenCostBadge } from '@/components/TokenCostBadge';
+import { InsufficientTokensModal } from '@/components/InsufficientTokensModal';
+import { useTokenCosts } from '@/hooks/useTokenCosts';
 
 interface BrandingResult {
   channelNames: string[];
@@ -23,12 +26,16 @@ interface BrandingResult {
 const Branding = () => {
   const { toast } = useToast();
   const { session } = useAuth();
+  const { getTokenCost } = useTokenCosts();
   const [niche, setNiche] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
   const [personality, setPersonality] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<BrandingResult | null>(null);
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
+  const [showInsufficientTokens, setShowInsufficientTokens] = useState(false);
+
+  const tokenCost = getTokenCost('channel_branding');
 
   const generateBranding = async () => {
     if (!niche.trim()) {
@@ -71,11 +78,16 @@ const Branding = () => {
       }
     } catch (error) {
       console.error('Error generating branding:', error);
-      toast({
-        title: 'Generation failed',
-        description: error instanceof Error ? error.message : 'Please try again',
-        variant: 'destructive',
-      });
+      const message = error instanceof Error ? error.message : 'Please try again';
+      if (message.includes('insufficient_tokens') || message.includes('Insufficient tokens')) {
+        setShowInsufficientTokens(true);
+      } else {
+        toast({
+          title: 'Generation failed',
+          description: message,
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -97,14 +109,27 @@ const Branding = () => {
         animate={{ opacity: 1, y: 0 }}
         className="space-y-2"
       >
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <Palette className="h-8 w-8 text-primary" />
-          Channel Branding
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <Palette className="h-8 w-8 text-primary" />
+            Channel Branding
+          </h1>
+          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gradient-to-r from-electric-purple/20 to-ice-blue/20 text-electric-purple border border-electric-purple/30">
+            CREATOR
+          </span>
+          <TokenCostBadge cost={tokenCost} featureName="Channel Branding" />
+        </div>
         <p className="text-muted-foreground">
           Generate a complete brand identity for your channel including name, logo ideas, and positioning
         </p>
       </motion.div>
+
+      <InsufficientTokensModal
+        open={showInsufficientTokens}
+        onOpenChange={setShowInsufficientTokens}
+        requiredTokens={tokenCost}
+        featureName="Channel Branding"
+      />
 
       {/* Generator Form */}
       <motion.div

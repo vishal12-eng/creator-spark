@@ -20,12 +20,13 @@ import {
   X,
   ChevronRight,
   Target,
-  Shield
+  Shield,
+  Coins
 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
 import { Calendar, Layers, FileVideo } from 'lucide-react';
+import { TokenDisplayHeader } from '@/components/TokenDisplayHeader';
 
 const sidebarLinks = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -33,11 +34,13 @@ const sidebarLinks = [
   { name: 'Video Ideas', href: '/dashboard/ideas', icon: Lightbulb },
   { name: 'Niche Analyzer', href: '/dashboard/niche', icon: Target },
   { name: 'Content Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-  { name: 'Channel Branding', href: '/dashboard/branding', icon: Palette },
+  { name: 'Channel Branding', href: '/dashboard/branding', icon: Palette, plan: 'CREATOR' },
   { name: 'AI Assistant', href: '/dashboard/chat', icon: Bot },
   { name: 'Content Calendar', href: '/dashboard/calendar', icon: Calendar, pro: true },
   { name: 'Batch Generation', href: '/dashboard/batch', icon: Layers, pro: true },
   { name: 'Advanced Scripting', href: '/dashboard/scripting', icon: FileVideo, pro: true },
+  { name: 'Token History', href: '/dashboard/token-history', icon: Coins },
+  { name: 'History', href: '/dashboard/history', icon: History },
   { name: 'History', href: '/dashboard/history', icon: History },
 ];
 
@@ -113,7 +116,9 @@ const DashboardLayout: React.FC = () => {
             {sidebarLinks.map((link) => {
               const isActive = location.pathname === link.href;
               const isPro = (link as any).pro;
+              const planTag = (link as any).plan;
               const isLocked = isPro && currentPlan !== 'PRO';
+              const showPlanBadge = planTag && currentPlan === 'FREE';
               return (
                 <Link
                   key={link.name}
@@ -132,7 +137,12 @@ const DashboardLayout: React.FC = () => {
                       {isLocked ? 'PRO' : <Crown className="w-3 h-3" />}
                     </span>
                   )}
-                  {isActive && !isPro && <ChevronRight className="w-4 h-4 ml-auto" />}
+                  {showPlanBadge && (
+                    <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-electric-purple/20 text-electric-purple">
+                      {planTag}
+                    </span>
+                  )}
+                  {isActive && !isPro && !showPlanBadge && <ChevronRight className="w-4 h-4 ml-auto" />}
                 </Link>
               );
             })}
@@ -180,6 +190,9 @@ const DashboardLayout: React.FC = () => {
 
             {/* Right Side */}
             <div className="flex items-center gap-4">
+              {/* Token Display */}
+              <TokenDisplayHeader />
+              
               <button
                 onClick={toggleTheme}
                 className="p-2 rounded-lg hover:bg-accent/10 transition-colors"
