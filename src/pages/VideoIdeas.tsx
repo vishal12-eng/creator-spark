@@ -9,6 +9,9 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { FeatureGate } from '@/components/FeatureGate';
+import { TokenCostBadge } from '@/components/TokenCostBadge';
+import { InsufficientTokensModal } from '@/components/InsufficientTokensModal';
+import { useTokenCosts } from '@/hooks/useTokenCosts';
 
 interface VideoIdea {
   title: string;
@@ -22,12 +25,16 @@ interface VideoIdea {
 const VideoIdeas = () => {
   const { toast } = useToast();
   const { session } = useAuth();
+  const { getTokenCost } = useTokenCosts();
   const [niche, setNiche] = useState('');
   const [topic, setTopic] = useState('');
   const [platform, setPlatform] = useState<'youtube' | 'instagram'>('youtube');
   const [isGenerating, setIsGenerating] = useState(false);
   const [ideas, setIdeas] = useState<VideoIdea[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showInsufficientTokens, setShowInsufficientTokens] = useState(false);
+
+  const tokenCost = getTokenCost('video_ideas');
 
   const generateIdeas = async () => {
     if (!niche.trim()) {
@@ -72,11 +79,17 @@ const VideoIdeas = () => {
       }
     } catch (error) {
       console.error('Error generating ideas:', error);
-      toast({ 
-        title: 'Error', 
-        description: error instanceof Error ? error.message : 'Failed to generate ideas',
-        variant: 'destructive' 
-      });
+      const message = error instanceof Error ? error.message : 'Failed to generate ideas';
+      
+      if (message.includes('insufficient_tokens') || message.includes('Insufficient tokens')) {
+        setShowInsufficientTokens(true);
+      } else {
+        toast({ 
+          title: 'Error', 
+          description: message,
+          variant: 'destructive' 
+        });
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -97,14 +110,24 @@ const VideoIdeas = () => {
         animate={{ opacity: 1, y: 0 }}
         className="space-y-2"
       >
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <Lightbulb className="h-8 w-8 text-primary" />
-          Video Ideas Generator
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <Lightbulb className="h-8 w-8 text-primary" />
+            Video Ideas Generator
+          </h1>
+          <TokenCostBadge cost={tokenCost} featureName="Video Ideas" />
+        </div>
         <p className="text-muted-foreground">
           Generate viral video ideas with AI-powered SEO titles, hooks, and hashtags
         </p>
       </motion.div>
+
+      <InsufficientTokensModal
+        open={showInsufficientTokens}
+        onOpenChange={setShowInsufficientTokens}
+        requiredTokens={tokenCost}
+        featureName="Video Ideas"
+      />
 
       {/* Generator Form */}
       <motion.div

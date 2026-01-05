@@ -17,8 +17,11 @@ import {
   Trash2,
   Eye,
   Shield,
-  BarChart3
+  BarChart3,
+  Coins,
+  Save
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
@@ -39,6 +42,14 @@ interface BlogPost {
   category: string;
 }
 
+interface TokenCostSetting {
+  id: string;
+  feature_id: string;
+  feature_name: string;
+  token_cost: number;
+  description: string | null;
+}
+
 const Admin: React.FC = () => {
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -49,6 +60,9 @@ const Admin: React.FC = () => {
     totalChatMessages: 0
   });
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [tokenCosts, setTokenCosts] = useState<TokenCostSetting[]>([]);
+  const [editingCosts, setEditingCosts] = useState<Record<string, number>>({});
+  const [savingCosts, setSavingCosts] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -69,7 +83,7 @@ const Admin: React.FC = () => {
       setIsAdmin(data);
 
       if (data) {
-        await Promise.all([fetchStats(), fetchBlogPosts()]);
+        await Promise.all([fetchStats(), fetchBlogPosts(), fetchTokenCosts()]);
       }
     } catch (error) {
       console.error('Error checking admin role:', error);
@@ -110,6 +124,47 @@ const Admin: React.FC = () => {
       setBlogPosts(data || []);
     } catch (error) {
       console.error('Error fetching blog posts:', error);
+    }
+  };
+
+  const fetchTokenCosts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('feature_token_costs')
+        .select('*')
+        .order('feature_name');
+
+      if (error) throw error;
+      setTokenCosts(data || []);
+      // Initialize editing state
+      const initialCosts: Record<string, number> = {};
+      (data || []).forEach(tc => {
+        initialCosts[tc.id] = tc.token_cost;
+      });
+      setEditingCosts(initialCosts);
+    } catch (error) {
+      console.error('Error fetching token costs:', error);
+    }
+  };
+
+  const saveTokenCosts = async () => {
+    setSavingCosts(true);
+    try {
+      const updates = Object.entries(editingCosts).map(([id, cost]) => 
+        supabase
+          .from('feature_token_costs')
+          .update({ token_cost: cost })
+          .eq('id', id)
+      );
+      
+      await Promise.all(updates);
+      toast.success('Token costs updated successfully');
+      fetchTokenCosts();
+    } catch (error) {
+      console.error('Error saving token costs:', error);
+      toast.error('Failed to update token costs');
+    } finally {
+      setSavingCosts(false);
     }
   };
 
@@ -223,6 +278,10 @@ const Admin: React.FC = () => {
               <FileText className="w-4 h-4" />
               Blog Posts
             </TabsTrigger>
+            <TabsTrigger value="tokens" className="gap-2">
+              <Coins className="w-4 h-4" />
+              Token Costs
+            </TabsTrigger>
             <TabsTrigger value="analytics" className="gap-2">
               <BarChart3 className="w-4 h-4" />
               Analytics
@@ -303,6 +362,53 @@ const Admin: React.FC = () => {
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="tokens">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Token Cost Configuration</CardTitle>
+                  <CardDescription>Set the token cost for each AI feature</CardDescription>
+                </div>
+                <Button onClick={saveTokenCosts} disabled={savingCosts}>
+                  <Save className="w-4 h-4 mr-2" />
+                  {savingCosts ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {tokenCosts.map((cost) => (
+                    <div
+                      key={cost.id}
+                      className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-accent/5 transition-colors"
+                    >
+                      <div className="flex-1">
+                        <h3 className="font-medium">{cost.feature_name}</h3>
+                        <p className="text-sm text-muted-foreground">{cost.description}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <Coins className="w-4 h-4 text-primary" />
+                          <Input
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={editingCosts[cost.id] || cost.token_cost}
+                            onChange={(e) => setEditingCosts(prev => ({
+                              ...prev,
+                              [cost.id]: parseInt(e.target.value) || 1
+                            }))}
+                            className="w-20 text-center"
+                          />
+                          <span className="text-sm text-muted-foreground">tokens</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

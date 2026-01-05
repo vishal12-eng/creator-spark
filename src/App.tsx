@@ -21,6 +21,7 @@ import NicheAnalyzer from "./pages/NicheAnalyzer";
 import ContentCalendar from "./pages/ContentCalendar";
 import BatchGeneration from "./pages/BatchGeneration";
 import AdvancedScripting from "./pages/AdvancedScripting";
+import TokenHistory from "./pages/TokenHistory";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import Admin from "./pages/Admin";
@@ -57,6 +58,7 @@ const App = () => (
                   <Route path="calendar" element={<ContentCalendar />} />
                   <Route path="batch" element={<BatchGeneration />} />
                   <Route path="scripting" element={<AdvancedScripting />} />
+                  <Route path="token-history" element={<TokenHistory />} />
                   <Route path="history" element={<History />} />
                   <Route path="settings" element={<Settings />} />
                 </Route>

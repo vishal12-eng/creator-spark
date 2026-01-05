@@ -9,6 +9,9 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { FeatureGate } from '@/components/FeatureGate';
+import { TokenCostBadge } from '@/components/TokenCostBadge';
+import { InsufficientTokensModal } from '@/components/InsufficientTokensModal';
+import { useTokenCosts } from '@/hooks/useTokenCosts';
 import {
   Image,
   Upload,
@@ -42,9 +45,11 @@ const platforms = [
 const ThumbnailGenerator: React.FC = () => {
   const { toast } = useToast();
   const { session } = useAuth();
+  const { getTokenCost } = useTokenCosts();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedThumbnail, setGeneratedThumbnail] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showInsufficientTokens, setShowInsufficientTokens] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     niche: '',
@@ -52,6 +57,8 @@ const ThumbnailGenerator: React.FC = () => {
     platform: 'youtube',
     style: '',
   });
+
+  const tokenCost = getTokenCost('thumbnail_generation');
 
   const handleGenerate = async () => {
     if (!formData.title) {
@@ -116,12 +123,18 @@ const ThumbnailGenerator: React.FC = () => {
     } catch (error) {
       console.error('Error generating thumbnail:', error);
       const message = error instanceof Error ? error.message : 'Failed to generate thumbnail';
-      setErrorMessage(message);
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      });
+      
+      // Check for insufficient tokens error
+      if (message.includes('insufficient_tokens') || message.includes('Insufficient tokens')) {
+        setShowInsufficientTokens(true);
+      } else {
+        setErrorMessage(message);
+        toast({
+          title: 'Error',
+          description: message,
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -178,11 +191,19 @@ const ThumbnailGenerator: React.FC = () => {
               <Image className="w-5 h-5 text-white" />
             </div>
             <h1 className="text-2xl font-display font-bold">AI Thumbnail Generator</h1>
+            <TokenCostBadge cost={tokenCost} featureName="Thumbnail Generation" />
           </div>
           <p className="text-muted-foreground">
             Create eye-catching, high-CTR thumbnails with AI-powered image generation.
           </p>
         </motion.div>
+
+        <InsufficientTokensModal
+          open={showInsufficientTokens}
+          onOpenChange={setShowInsufficientTokens}
+          requiredTokens={tokenCost}
+          featureName="Thumbnail Generation"
+        />
 
         <div className="grid lg:grid-cols-2 gap-8">
           <motion.div

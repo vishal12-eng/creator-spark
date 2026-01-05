@@ -236,6 +236,36 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_token_costs: {
+        Row: {
+          created_at: string
+          description: string | null
+          feature_id: string
+          feature_name: string
+          id: string
+          token_cost: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          feature_id: string
+          feature_name: string
+          id?: string
+          token_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          feature_id?: string
+          feature_name?: string
+          id?: string
+          token_cost?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       niche_analyses: {
         Row: {
           competition_level: string
